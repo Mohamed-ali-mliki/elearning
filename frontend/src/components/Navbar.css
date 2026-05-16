@@ -1,0 +1,109 @@
+/* Force la navbar à prendre toute la largeur sans marges externes */
+.full-width-navbar {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  left: 0;
+  right: 0;
+}
+
+/* Supprime tout padding sur le container-fluid */
+.container-fluid.px-0 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Liens de navigation – hauteur raisonnable */
+.navbar-light .navbar-nav .nav-link {
+  margin-right: 30px;
+  padding: 15px 0;     /* au lieu de 25px 0 – plus compact */
+  color: #181d38;
+  font-size: 15px;
+  text-transform: uppercase;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.navbar-light .navbar-nav .nav-link:hover,
+.navbar-light .navbar-nav .nav-link.active {
+  color: #06BBCC;
+}
+
+/* Logo – hauteur automatique, pas de taille fixe excessive */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  /* Suppression de height: 75px */
+}
+
+/* Barre de recherche */
+.search-form {
+  margin: 0 15px;
+  min-width: 250px;
+}
+
+.search-form .input-group {
+  border-radius: 30px;
+  overflow: hidden;
+  background-color: #f8f9fa;
+}
+
+.search-form .form-control {
+  border: none;
+  background: transparent;
+  padding: 0.5rem 1rem;
+}
+
+.search-form .btn {
+  border-radius: 0;
+  padding: 0.5rem 1rem;
+}
+
+/* Boutons Login / Signup */
+.btn-outline-primary {
+  color: #06BBCC;
+  border-color: #06BBCC;
+}
+.btn-outline-primary:hover {
+  background-color: #06BBCC;
+  color: white;
+}
+
+/* Dropdown menu */
+.dropdown-menu.show {
+  display: block;
+  margin-top: 0.5rem;
+  border-radius: 0;
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+}
+
+/* Responsive : sur mobile tout en colonne */
+@media (max-width: 991.98px) {
+  .navbar-light .navbar-nav .nav-link {
+    margin-right: 0;
+    padding: 10px 0;
+  }
+
+  .search-form {
+    margin: 1rem 0;
+    width: 100%;
+  }
+
+  .auth-buttons {
+    margin-top: 1rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .dropdown-menu.show {
+    position: static !important;
+    width: 100%;
+  }
+}
+
+/* Option pour l'effet sticky (si besoin) */
+.sticky-top {
+  top: -100px;
+  transition: top 0.5s;
+}
