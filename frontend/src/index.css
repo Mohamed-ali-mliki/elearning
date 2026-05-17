@@ -1,68 +1,117 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+/* ========== STYLES POUR LA PAGE CONTACT (header, breadcrumb, carte) ========== */
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: 'Poppins', sans-serif;
-  background-color: #fff;
-}
-
-#root {
-  width: 100%;
-  min-height: 100vh;
+.page-header {
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+              url('https://via.placeholder.com/1920x400?text=eLearning+Contact') center/cover no-repeat;
+  min-height: 300px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
 }
-/* index.css - ajouts pour les formulaires */
-.btn-primary {
-  background-color: #2b6ef0 !important;
-  border-color: #2b6ef0 !important;
-  transition: all 0.2s ease-in-out;
-}
-.btn-primary:hover {
-  background-color: #0d4bc0 !important;
-  border-color: #0d4bc0 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(43, 110, 240, 0.3);
+@media (max-width: 768px) {
+  .page-header {
+    min-height: 200px;
+  }
 }
 
-.btn-outline-secondary {
-  border: 1px solid #dee2e6;
-  color: #495057;
-  background: white;
+.btn-lg-square {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px !important;
 }
-.btn-outline-secondary:hover {
-  background-color: #eef2ff;
-  border-color: #2b6ef0;
+
+.wow {
+  visibility: visible !important;
+}
+
+/* Animation simple (si vous ne voulez pas utiliser animate.css) */
+.animated {
+  animation-duration: 0.5s;
+  animation-fill-mode: both;
+}
+.slideInDown {
+  animation-name: slideInDown;
+}
+@keyframes slideInDown {
+  from {
+    transform: translate3d(0, -100%, 0);
+    visibility: visible;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Breadcrumb */
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #fff;
+}
+.breadcrumb-item a {
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.breadcrumb-item a:hover {
+  color: #2b6ef0 !important;
+}
+/* ========== STYLES PAGE CONTACT (template original) ========== */
+.page-header {
+  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/img/carousel-1.jpg') center/cover no-repeat;
+  min-height: 350px;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    min-height: 250px;
+  }
+}
+
+.breadcrumb-item a {
+  text-decoration: none;
+  color: #fff;
+  transition: color 0.2s;
+}
+.breadcrumb-item a:hover {
+  color: #2b6ef0 !important;
+}
+.breadcrumb-item.active {
   color: #2b6ef0;
 }
-
-.card {
-  border-radius: 1.5rem !important;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.1);
-}
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 25px 40px -12px rgba(0, 0, 0, 0.2);
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #fff;
 }
 
-.form-control, .input-group-text {
-  border-radius: 0.75rem !important;
-  border: 1px solid #e2e8f0;
-  padding: 0.6rem 1rem;
-}
-.form-control:focus {
-  border-color: #2b6ef0;
-  box-shadow: 0 0 0 3px rgba(43, 110, 240, 0.2);
+.btn-lg-square {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px !important;
 }
 
-.invalid-feedback {
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
+/* Animation (si nécessaire) */
+.wow {
+  visibility: visible !important;
+}
+.animated {
+  animation-duration: 0.5s;
+  animation-fill-mode: both;
+}
+.slideInDown {
+  animation-name: slideInDown;
+}
+@keyframes slideInDown {
+  from {
+    transform: translate3d(0, -100%, 0);
+    visibility: visible;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
 }
