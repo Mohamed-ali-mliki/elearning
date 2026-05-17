@@ -1,0 +1,273 @@
+/* ========== FOOTER ORIGINAL - taille réduite 25% ========== */
+.footer {
+  background-color: #1a1a1a !important;
+  color: #c0c0c0;
+}
+
+/* Titres */
+.footer h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+/* Liens avec > (flèche) */
+.footer-link {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #c0c0c0;
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+  position: relative;
+  padding-left: 1rem;
+}
+
+.footer-link::before {
+  content: ">";
+  position: absolute;
+  left: 0;
+  color: #c0c0c0;
+  transition: color 0.3s;
+}
+
+.footer-link:hover {
+  color: #06BBCC;
+  padding-left: 1.2rem;
+}
+
+.footer-link:hover::before {
+  color: #06BBCC;
+}
+
+/* Coordonnées */
+.footer-contact {
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  color: #c0c0c0;
+}
+
+.footer-contact i {
+  width: 1.2rem;
+  color: #06BBCC;
+}
+
+/* Icônes sociales */
+.social-icons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.social-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  color: #c0c0c0;
+  font-size: 0.8rem;
+  transition: all 0.3s;
+  text-decoration: none;
+}
+
+.social-icon:hover {
+  background-color: #06BBCC;
+  border-color: #06BBCC;
+  color: white;
+}
+
+/* ========== NEWSLETTER AMÉLIORÉE ========== */
+.newsletter-text {
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  color: #c0c0c0;
+  line-height: 1.4;
+}
+
+.newsletter-form {
+  width: 100%;
+}
+
+.newsletter-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #2a2a2a;
+  border-radius: 50px;
+  transition: all 0.3s;
+  border: 1px solid transparent;
+}
+
+.newsletter-input-group:focus-within {
+  border-color: #06BBCC;
+  box-shadow: 0 0 0 2px rgba(6, 187, 204, 0.2);
+}
+
+.newsletter-icon {
+  position: absolute;
+  left: 15px;
+  color: #06BBCC;
+  font-size: 0.9rem;
+  z-index: 1;
+}
+
+.newsletter-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0.6rem 1rem 0.6rem 2.8rem;
+  color: white;
+  font-size: 0.85rem;
+  border-radius: 50px;
+  outline: none;
+}
+
+.newsletter-input::placeholder {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+.newsletter-input.error {
+  animation: shake 0.3s ease;
+}
+
+.newsletter-input.success {
+  background-color: rgba(6, 187, 204, 0.1);
+}
+
+.newsletter-btn {
+  position: absolute;
+  right: 5px;
+  background: linear-gradient(135deg, #06BBCC, #0598a6);
+  border: none;
+  color: white;
+  padding: 0.4rem 1.2rem;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.newsletter-btn i {
+  font-size: 0.7rem;
+  transition: transform 0.3s;
+}
+
+.newsletter-btn:hover {
+  background: linear-gradient(135deg, #0598a6, #04808c);
+  transform: scale(1.02);
+}
+
+.newsletter-btn:hover i {
+  transform: translateX(3px);
+}
+
+.newsletter-error {
+  color: #ff6b6b;
+  font-size: 0.7rem;
+  margin-top: 0.5rem;
+  text-align: left;
+}
+
+.newsletter-success {
+  color: #06BBCC;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  text-align: left;
+  animation: fadeIn 0.5s ease;
+}
+
+.newsletter-note {
+  font-size: 0.65rem;
+  color: #888;
+  margin-top: 0.8rem;
+  text-align: left;
+}
+
+.newsletter-note i {
+  margin-right: 4px;
+  color: #06BBCC;
+}
+
+/* Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Copyright */
+.copyright-container {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding: 0.8rem 0;
+  margin-top: 1rem;
+}
+
+.copyright-text {
+  font-size: 0.7rem;
+  color: #9ca3af;
+}
+
+.copyright-text a {
+  color: #9ca3af;
+  text-decoration: none;
+}
+
+.copyright-text a:hover {
+  color: #06BBCC;
+}
+
+.footer-links a {
+  color: #9ca3af;
+  text-decoration: none;
+  margin-left: 1rem;
+  font-size: 0.7rem;
+}
+
+.footer-links a:hover {
+  color: #06BBCC;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .footer-links {
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+  .footer-links a {
+    margin: 0 0.5rem;
+  }
+  .copyright-text {
+    text-align: center;
+  }
+  
+  .newsletter-btn span {
+    display: none;
+  }
+  
+  .newsletter-btn {
+    padding: 0.4rem 1rem;
+  }
+  
+  .newsletter-btn i {
+    margin: 0;
+  }
+}
