@@ -1,41 +1,51 @@
+// src/components/Navbar.jsx
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom'; // 👈 Ajout du routage
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './Navbar.css';
 
 const Navbar = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // false = déconnecté
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // false = déconnecté (simulé)
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [navbarCollapsed, setNavbarCollapsed] = useState(true);
+  const navigate = useNavigate();
 
-  const handleLogin = () => {
-    console.log('Ouvrir modal Login');
+  const handleLoginRedirect = () => {
+    navigate('/login');
   };
 
-  const handleSignup = () => {
-    console.log('Ouvrir modal Signup');
+  const handleSignupRedirect = () => {
+    navigate('/signup');
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     setDropdownOpen(false);
+    navigate('/'); // Redirige vers l'accueil après déconnexion
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
     console.log('Recherche :', searchTerm);
+    // Ici vous pourrez naviguer vers /search?q=...
+  };
+
+  // Ferme le menu collapse après clic sur un lien (optionnel)
+  const closeNavbar = () => {
+    setNavbarCollapsed(true);
   };
 
   return (
     <nav className="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0 full-width-navbar">
       <div className="container-fluid px-0">
         {/* Logo */}
-        <a href="/" className="navbar-brand d-flex align-items-center">
+        <Link to="/" className="navbar-brand d-flex align-items-center" onClick={closeNavbar}>
           <h2 className="m-0 text-primary">
             <i className="fa fa-book me-3"></i>eLEARNING
           </h2>
-        </a>
+        </Link>
 
         {/* Hamburger toggler */}
         <button
@@ -50,16 +60,16 @@ const Navbar = () => {
         <div className={`collapse navbar-collapse ${navbarCollapsed ? '' : 'show'}`}>
           <ul className="navbar-nav ms-auto p-3 p-lg-0">
             <li className="nav-item">
-              <a href="/" className="nav-link active">Home</a>
+              <Link to="/" className="nav-link" onClick={closeNavbar}>Home</Link>
             </li>
             <li className="nav-item">
-              <a href="/about" className="nav-link">About</a>
+              <Link to="/about" className="nav-link" onClick={closeNavbar}>About</Link>
             </li>
             <li className="nav-item">
-              <a href="/courses" className="nav-link">Courses</a>
+              <Link to="/courses" className="nav-link" onClick={closeNavbar}>Courses</Link>
             </li>
             <li className="nav-item">
-              <a href="/contact" className="nav-link">Contact</a>
+              <Link to="/contact" className="nav-link" onClick={closeNavbar}>Contact</Link>
             </li>
           </ul>
 
@@ -83,10 +93,10 @@ const Navbar = () => {
           <div className="auth-buttons ms-lg-3 mt-3 mt-lg-0">
             {!isLoggedIn ? (
               <>
-                <button className="btn btn-outline-primary me-2" onClick={handleLogin}>
+                <button className="btn btn-outline-primary me-2" onClick={handleLoginRedirect}>
                   Login
                 </button>
-                <button className="btn btn-primary" onClick={handleSignup}>
+                <button className="btn btn-primary" onClick={handleSignupRedirect}>
                   Signup
                 </button>
               </>
@@ -104,9 +114,9 @@ const Navbar = () => {
                 </button>
                 {dropdownOpen && (
                   <ul className="dropdown-menu show" style={{ position: 'absolute', right: 0, top: '100%' }}>
-                    <li><a className="dropdown-item" href="/dashboard">Dashboard</a></li>
-                    <li><a className="dropdown-item" href="/my-courses">My courses</a></li>
-                    <li><a className="dropdown-item" href="/settings">Settings</a></li>
+                    <li><Link className="dropdown-item" to="/dashboard" onClick={closeNavbar}>Dashboard</Link></li>
+                    <li><Link className="dropdown-item" to="/my-courses" onClick={closeNavbar}>My courses</Link></li>
+                    <li><Link className="dropdown-item" to="/settings" onClick={closeNavbar}>Settings</Link></li>
                     <li><hr className="dropdown-divider" /></li>
                     <li><button className="dropdown-item" onClick={handleLogout}>Logout</button></li>
                   </ul>

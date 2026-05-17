@@ -18,3 +18,51 @@ body {
   display: flex;
   flex-direction: column;
 }
+/* index.css - ajouts pour les formulaires */
+.btn-primary {
+  background-color: #2b6ef0 !important;
+  border-color: #2b6ef0 !important;
+  transition: all 0.2s ease-in-out;
+}
+.btn-primary:hover {
+  background-color: #0d4bc0 !important;
+  border-color: #0d4bc0 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(43, 110, 240, 0.3);
+}
+
+.btn-outline-secondary {
+  border: 1px solid #dee2e6;
+  color: #495057;
+  background: white;
+}
+.btn-outline-secondary:hover {
+  background-color: #eef2ff;
+  border-color: #2b6ef0;
+  color: #2b6ef0;
+}
+
+.card {
+  border-radius: 1.5rem !important;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.1);
+}
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 40px -12px rgba(0, 0, 0, 0.2);
+}
+
+.form-control, .input-group-text {
+  border-radius: 0.75rem !important;
+  border: 1px solid #e2e8f0;
+  padding: 0.6rem 1rem;
+}
+.form-control:focus {
+  border-color: #2b6ef0;
+  box-shadow: 0 0 0 3px rgba(43, 110, 240, 0.2);
+}
+
+.invalid-feedback {
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
