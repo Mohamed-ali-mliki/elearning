@@ -12,7 +12,7 @@ const Home = () => {
     const WOW = window.WOW;
 
     // Carrousel principal (header)
-    if ($ && $('.header-carousel').length) {
+    if ($ && typeof $.fn.owlCarousel === 'function' && $('.header-carousel').length) {
       $('.header-carousel').owlCarousel({
         items: 1,
         loop: true,
@@ -25,7 +25,7 @@ const Home = () => {
       });
     }
     // Carrousel des témoignages (plusieurs items visibles)
-    if ($ && $('.testimonial-carousel').length) {
+    if ($ && typeof $.fn.owlCarousel === 'function' && $('.testimonial-carousel').length) {
       $('.testimonial-carousel').owlCarousel({
         items: 1,
         loop: true,
@@ -44,7 +44,7 @@ const Home = () => {
       });
     }
     // Réinitialisation WOW (si besoin)
-    if (WOW) {
+    if (typeof WOW !== 'undefined') {
       new WOW().init();
     }
   }, []);

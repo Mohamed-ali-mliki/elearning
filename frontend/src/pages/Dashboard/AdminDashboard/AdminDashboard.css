@@ -1,0 +1,40 @@
+/* pages/Dashboard/AdminDashboard/AdminDashboard.css */
+.admin-dashboard {
+  padding: 2rem;
+}
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.user-table th, .user-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+.role-select {
+  padding: 0.25rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e0;
+}
+.course-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+.course-item {
+  width: 300px;
+  padding: 1rem;
+}
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.btn-danger {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
