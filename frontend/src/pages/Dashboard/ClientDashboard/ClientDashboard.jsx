@@ -1,22 +1,29 @@
-// pages/Dashboard/ClientDashboard/ClientDashboard.jsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './ClientDashboard.css';
 
 export default function ClientDashboard() {
   const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchEnrolled = async () => {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/client/enrollments', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setEnrolledCourses(data);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/client/enrollments', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Erreur chargement');
+        const data = await res.json();
+        setEnrolledCourses(data);
+      } catch (err) {
+        setError('Impossible de charger vos cours');
+      }
     };
     fetchEnrolled();
   }, []);
+
+  if (error) return <div className="alert alert-danger m-4">{error}</div>;
 
   return (
     <div className="client-dashboard container">
