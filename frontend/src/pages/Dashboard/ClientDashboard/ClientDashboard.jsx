@@ -10,14 +10,18 @@ export default function ClientDashboard() {
     const fetchEnrolled = async () => {
       try {
         const token = localStorage.getItem('token');
+        if (!token) throw new Error('Veuillez vous connecter');
+
         const res = await fetch('/api/client/enrollments', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) throw new Error('Erreur chargement');
+
+        if (!res.ok) throw new Error('Impossible de charger vos cours');
+        
         const data = await res.json();
         setEnrolledCourses(data);
       } catch (err) {
-        setError('Impossible de charger vos cours');
+        setError(err.message);
       }
     };
     fetchEnrolled();

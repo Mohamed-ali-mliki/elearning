@@ -12,7 +12,7 @@ exports.buyCourse = async (req, res) => {
     }
 
     const course = await Course.findById(courseId);
-    if (!course || !course.isApproved) {
+    if (!course || course.status !== 'approved') {
       return res.status(404).json({ message: 'Cours non disponible' });
     }
 

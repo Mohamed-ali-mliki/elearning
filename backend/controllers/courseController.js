@@ -1,16 +1,16 @@
 const Course = require('../models/Course');
 
-// Créer un cours (formateur ou admin)
 exports.createCourse = async (req, res) => {
   try {
-    const { title, description, thumbnail, price } = req.body;
+    const { title, description, thumbnail, price, category } = req.body;
     const course = await Course.create({
       title,
       description,
       thumbnail,
       price,
-      formateurId: req.user.id, // vient du token
-      isApproved: false
+      category,
+      formateur: req.user.id,
+      status: 'pending'
     });
     res.status(201).json(course);
   } catch (err) {
@@ -18,21 +18,16 @@ exports.createCourse = async (req, res) => {
   }
 };
 
-// Ajouter un chapitre à un cours (seulement le formateur propriétaire ou admin)
 exports.addChapter = async (req, res) => {
   try {
-    if (!req.params.courseId.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ message: 'ID de cours invalide' });
-    }
-    const course = await Course.findById(req.params.courseId);
+    const { courseId } = req.params;
+    const { title, videoUrl, duration } = req.body;
+    const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: 'Cours non trouvé' });
-    // Vérifier que l'utilisateur est le formateur du cours ou admin
-    if (course.formateurId.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (course.formateur.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Non autorisé' });
     }
-    const { title, videoUrl } = req.body;
-    const order = course.chapters.length;
-    course.chapters.push({ title, videoUrl, order });
+    course.chapters.push({ title, videoUrl, duration });
     await course.save();
     res.json(course);
   } catch (err) {
@@ -40,54 +35,48 @@ exports.addChapter = async (req, res) => {
   }
 };
 
-// Récupérer les cours du formateur connecté
 exports.getFormateurCourses = async (req, res) => {
   try {
-    const courses = await Course.find({ formateurId: req.user.id });
+    const courses = await Course.find({ formateur: req.user.id });
     res.json(courses);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// Récupérer tous les cours (pour admin)
 exports.getAllCourses = async (req, res) => {
   try {
-    const courses = await Course.find().populate('formateurId', 'fullName email');
+    const courses = await Course.find().populate('formateur', 'fullName email');
     res.json(courses);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// Récupérer les cours en attente de validation
 exports.getPendingCourses = async (req, res) => {
   try {
-    const courses = await Course.find({ isApproved: false }).populate('formateurId', 'fullName');
+    const courses = await Course.find({ status: 'pending' }).populate('formateur', 'fullName email');
     res.json(courses);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// Valider un cours (admin)
 exports.validateCourse = async (req, res) => {
   try {
-    const course = await Course.findById(req.params.courseId);
+    const course = await Course.findByIdAndUpdate(req.params.courseId, { status: 'approved' }, { new: true });
     if (!course) return res.status(404).json({ message: 'Cours non trouvé' });
-    course.isApproved = true;
-    await course.save();
-    res.json({ message: 'Cours validé', course });
+    res.json(course);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// Supprimer un cours (admin)
 exports.deleteCourse = async (req, res) => {
   try {
-    await Course.findByIdAndDelete(req.params.courseId);
-    res.json({ message: 'Cours supprimé' });
+    const course = await Course.findByIdAndDelete(req.params.courseId);
+    if (!course) return res.status(404).json({ message: 'Cours non trouvé' });
+    res.status(204).send();
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

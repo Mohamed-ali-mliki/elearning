@@ -14,14 +14,14 @@ const {
 const router = express.Router();
 
 // Formateur routes
-router.post('/formateur', protect, isFormateur, createCourse);
-router.put('/formateur/:courseId/chapters', protect, isFormateur, addChapter);
-router.get('/formateur', protect, isFormateur, getFormateurCourses);
+router.get('/formateur/courses', protect, isFormateur, getFormateurCourses);
+router.post('/formateur/courses', protect, isFormateur, createCourse);
+router.put('/formateur/courses/:courseId/chapters', protect, isFormateur, addChapter);
 
-// Admin routes (gestion des cours)
-router.get('/admin/all', protect, isAdmin, getAllCourses);
-router.get('/admin/pending', protect, isAdmin, getPendingCourses);
-router.put('/admin/:courseId/validate', protect, isAdmin, validateCourse);
-router.delete('/admin/:courseId', protect, isAdmin, deleteCourse);
+// Admin routes for courses
+router.get('/admin/courses/all', protect, isAdmin, getAllCourses);
+router.get('/admin/courses/pending', protect, isAdmin, getPendingCourses);
+router.put('/admin/courses/:courseId/validate', protect, isAdmin, validateCourse);
+router.delete('/admin/courses/:courseId', protect, isAdmin, deleteCourse);
 
 module.exports = router;

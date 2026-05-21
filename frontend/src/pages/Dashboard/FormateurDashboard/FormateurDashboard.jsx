@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
 import './FormateurDashboard.css';
 
 export default function FormateurDashboard() {
+  const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [newCourse, setNewCourse] = useState({ title: '', description: '', thumbnail: '' });
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -12,18 +14,28 @@ export default function FormateurDashboard() {
     const fetchCourses = async () => {
       try {
         const token = localStorage.getItem('token');
+        if (!token) throw new Error('Token manquant');
+
         const res = await fetch('/api/formateur/courses', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) throw new Error('Erreur chargement');
+        
+        if (res.status === 403) throw new Error('Accès refusé : Droits formateur requis');
+        if (!res.ok) throw new Error('Erreur lors du chargement de vos cours');
+
         const data = await res.json();
         setCourses(data);
       } catch (err) {
-        setError('Impossible de charger vos cours');
+        setError(err.message);
       }
     };
-    fetchCourses();
-  }, []);
+
+    if (user && user.role === 'formateur') {
+      fetchCourses();
+    } else if (user) {
+      setError('Accès refusé : Vous devez être Formateur pour voir cette page');
+    }
+  }, [user]);
 
   const createCourse = async (e) => {
     e.preventDefault();

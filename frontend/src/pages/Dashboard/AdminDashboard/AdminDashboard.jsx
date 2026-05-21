@@ -1,45 +1,63 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [pendingCourses, setPendingCourses] = useState([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const loadAdminData = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setUsers(data);
-      } catch (err) { setError('Erreur chargement utilisateurs'); }
+        if (!token) throw new Error('Session expirée, veuillez vous reconnecter');
+
+        // On lance les deux requêtes en parallèle
+        const [usersRes, coursesRes] = await Promise.all([
+          fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/admin/courses/pending', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+
+        if (usersRes.status === 403 || coursesRes.status === 403) {
+          throw new Error('Accès refusé : Vous devez être Administrateur');
+        }
+
+        if (!usersRes.ok || !coursesRes.ok) {
+          throw new Error('Erreur lors du chargement des données');
+        }
+
+        const usersData = await usersRes.json();
+        const coursesData = await coursesRes.json();
+
+        setUsers(usersData);
+        setPendingCourses(coursesData);
+      } catch (err) {
+        setError(err.message);
+      }
     };
-    const fetchPendingCourses = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('/api/admin/courses/pending', { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setPendingCourses(data);
-      } catch (err) { setError('Erreur chargement cours'); }
-    };
-    fetchUsers();
-    fetchPendingCourses();
+
+    if (user && user.role === 'admin') {
+      loadAdminData();
+    } else if (user) {
+      setError('Accès non autorisé : Réservé aux administrateurs');
+    }
   }, []);
 
   const changeRole = async (userId, newRole) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`/api/admin/users/${userId}/role`, {
+      const res = await fetch(`/api/admin/users/${userId}/role`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ role: newRole }),
       });
-      const res = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setUsers(data);
+      
+      if (!res.ok) throw new Error();
+      
+      // Refresh list
+      setUsers(users.map(u => u._id === userId ? { ...u, role: newRole } : u));
     } catch (err) { setError('Erreur mise à jour rôle'); }
   };
 
