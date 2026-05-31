@@ -1,40 +1,26 @@
-/* pages/Dashboard/AdminDashboard/AdminDashboard.css */
 .admin-dashboard {
-  padding: 2rem;
-}
-.user-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.user-table th, .user-table td {
-  padding: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
-  text-align: left;
-}
-.role-select {
-  padding: 0.25rem;
-  border-radius: 6px;
-  border: 1px solid #cbd5e0;
-}
-.course-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 2rem;
+}
+.stats-row {
+  display: flex;
   gap: 1.5rem;
+  flex-wrap: wrap;
 }
-.course-item {
-  width: 300px;
-  padding: 1rem;
+.stat-card, .glass {
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(8px);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: transform 0.2s;
 }
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-}
+.stat-card { flex: 1; text-align: center; font-size: 1.5rem; }
+.chart-container { margin: 1rem 0; padding: 1rem; }
+.user-table { width: 100%; border-collapse: collapse; }
+.user-table th, .user-table td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.05); }
+.pending-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 1rem; }
+.btn-success, .btn-danger { border: none; padding: 6px 12px; border-radius: 40px; margin: 0 5px; font-weight: bold; }
+.btn-success { background: #10b981; color: white; }
+.btn-danger { background: #ef4444; color: white; }

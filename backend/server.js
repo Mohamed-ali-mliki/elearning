@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/authRoutes');
@@ -12,22 +13,27 @@ const adminRoutes = require('./routes/adminRoutes');
 connectDB();
 
 const app = express();
+
+// Servir les fichiers uploadés (vidéos, PDFs, images)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api', courseRoutes);          // contient /formateur/courses, /admin/courses...
-app.use('/api', enrollmentRoutes);      // contient /client/enrollments, /courses/:id/buy
+app.use('/api', courseRoutes);          // attention : /api/courses, /api/formateur/courses, etc.
+app.use('/api', enrollmentRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Route de test
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK' });
+  res.json({ status: 'OK', timestamp: new Date() });
 });
 
-// Middleware 404 simple (sans /api/*)
+// 404 pour les routes non trouvées
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} non trouvée` });
 });

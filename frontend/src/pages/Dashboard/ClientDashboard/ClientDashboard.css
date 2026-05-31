@@ -1,21 +1,43 @@
-/* pages/Dashboard/ClientDashboard/ClientDashboard.css */
-.client-dashboard {
-  padding: 2rem;
-}
-.courses-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  margin-top: 1.5rem;
+.client-dashboard .courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
+  gap: 2rem;
 }
 .course-card {
-  width: 280px;
-  padding: 1rem;
+  border-radius: 24px;
+  overflow: hidden;
+  transition: all 0.2s;
 }
-.course-card img {
+.course-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255,255,255,0.9);
+}
+.course-img {
   width: 100%;
   height: 160px;
   object-fit: cover;
-  border-radius: 8px;
-  margin-bottom: 0.75rem;
+}
+.progress-section {
+  margin: 1rem 0;
+}
+.progress-bar-bg {
+  background: #e2e8f0;
+  border-radius: 20px;
+  height: 8px;
+  overflow: hidden;
+}
+.progress-fill {
+  background: #3b82f6;
+  height: 100%;
+  width: 0%;
+  border-radius: 20px;
+}
+.btn-resume {
+  display: inline-block;
+  background: #3b82f6;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 40px;
+  text-decoration: none;
+  text-align: center;
 }

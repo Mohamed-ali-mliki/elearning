@@ -1,4 +1,4 @@
-const Enrollment = require('../models/Enrollment'); // ← décommenté
+const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
 
 exports.buyCourse = async (req, res) => {
@@ -13,7 +13,7 @@ exports.buyCourse = async (req, res) => {
 
     const course = await Course.findById(courseId);
     if (!course || course.status !== 'approved') {
-      return res.status(404).json({ message: 'Cours non disponible' });
+      return res.status(404). json({ message: 'Cours non disponible' });
     }
 
     const enrollment = await Enrollment.create({ userId, courseId });
@@ -26,11 +26,51 @@ exports.buyCourse = async (req, res) => {
 exports.getMyEnrollments = async (req, res) => {
   try {
     const enrollments = await Enrollment.find({ userId: req.user.id }).populate('courseId');
-    // Filtrer les enrollments où le cours pourrait être nul (si supprimé)
     const courses = enrollments
       .filter(e => e.courseId !== null)
       .map(e => e.courseId);
     res.json(courses);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Vérifier si l'utilisateur est inscrit à un cours
+exports.checkEnrollment = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const enrollment = await Enrollment.findOne({ userId: req.user.id, courseId });
+    res.json({ enrolled: !!enrollment });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Mettre à jour la progression d'une section
+exports.updateProgress = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { sectionId, completed } = req.body;
+    const userId = req.user.id;
+    let enrollment = await Enrollment.findOne({ userId, courseId });
+    if (!enrollment) return res.status(404).json({ message: 'Inscription non trouvée' });
+    
+    // Mettre à jour sectionProgress
+    const existing = enrollment.sectionProgress.find(sp => sp.sectionId.toString() === sectionId);
+    if (existing) {
+      existing.completed = completed;
+      if (completed) existing.completedAt = new Date();
+    } else {
+      enrollment.sectionProgress.push({ sectionId, completed, completedAt: completed ? new Date() : null });
+    }
+    
+    // Recalculer le pourcentage global
+    const course = await Course.findById(courseId);
+    const totalSections = course.sections.length;
+    const completedSections = enrollment.sectionProgress.filter(sp => sp.completed).length;
+    enrollment.progress = totalSections > 0 ? (completedSections / totalSections) * 100 : 0;
+    await enrollment.save();
+    res.json(enrollment);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
