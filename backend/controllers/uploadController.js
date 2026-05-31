@@ -1,5 +1,6 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -8,6 +9,12 @@ const storage = multer.diskStorage({
     else if (file.mimetype.startsWith('video/')) folder += 'videos';
     else if (file.mimetype === 'application/pdf') folder += 'pdfs';
     else folder += 'others';
+
+    // Créer le dossier s'il n'existe pas
+    if (!fs.existsSync(folder)) {
+      fs.mkdirSync(folder, { recursive: true });
+    }
+
     cb(null, folder);
   },
   filename: (req, file, cb) => {

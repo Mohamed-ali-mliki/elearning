@@ -149,7 +149,7 @@ exports.validateCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
     const { status } = req.body;
-    const course = await Course.findByIdAndUpdate(courseId, { status }, { new: true });
+    const course = await Course.findByIdAndUpdate(courseId, { status }, { returnDocument: 'after' });
     res.json(course);
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -2,105 +2,147 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './AdminDashboard.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { token: contextToken } = useAuth();
+  const token = contextToken || localStorage.getItem('token');
   const [users, setUsers] = useState([]);
   const [pendingCourses, setPendingCourses] = useState([]);
   const [stats, setStats] = useState({ totalUsers: 0, totalCourses: 0, totalRevenue: 0 });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({ fullName: '', email: '', password: '', role: 'client' });
+  
+  // États pour la modale de visualisation d’un cours en attente
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  
+  // États pour le rejet avec message
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectCourseId, setRejectCourseId] = useState(null);
+  const [rejectMessage, setRejectMessage] = useState('');
 
+  // Chargement initial
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (token) {
+      fetchData();
+    }
+  }, [token]);
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('token');
+      if (!token) return;
+      
       const [usersRes, coursesRes] = await Promise.all([
-        fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/courses/pending', { headers: { Authorization: `Bearer ${token}` } })
+        axios.get('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get('/api/admin/courses/pending', { headers: { Authorization: `Bearer ${token}` } })
       ]);
-      const usersData = await usersRes.json();
-      const coursesData = await coursesRes.json();
-      setUsers(usersData);
-      setPendingCourses(coursesData);
+      setUsers(usersRes.data);
+      setPendingCourses(coursesRes.data);
       setStats({
-        totalUsers: usersData.length,
-        totalCourses: coursesData.length,
+        totalUsers: usersRes.data.length,
+        totalCourses: coursesRes.data.length,
         totalRevenue: 0
       });
+      setError('');
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
+      setTimeout(() => setError(''), 4000);
     }
   };
 
+  // Afficher une notification temporaire
+  const showNotification = (msg, isError = false) => {
+    if (isError) setError(msg);
+    else setSuccess(msg);
+    setTimeout(() => {
+      setError('');
+      setSuccess('');
+    }, 4000);
+  };
+
+  // --- Gestion des utilisateurs ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    const url = editingUser ? `/api/admin/users/${editingUser._id}` : '/api/admin/users';
-    const method = editingUser ? 'PUT' : 'POST';
-    const body = editingUser ? { fullName: formData.fullName, email: formData.email, role: formData.role } : formData;
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body)
-    });
-    if (res.ok) {
+    try {
+      const url = editingUser ? `/api/admin/users/${editingUser._id}` : '/api/admin/users';
+      const method = editingUser ? 'put' : 'post';
+      const body = editingUser 
+        ? { fullName: formData.fullName, email: formData.email, role: formData.role }
+        : { fullName: formData.fullName, email: formData.email, password: formData.password, role: formData.role };
+      await axios[method](url, body, { headers: { Authorization: `Bearer ${token}` } });
+      showNotification(editingUser ? 'Utilisateur modifié' : 'Utilisateur ajouté');
       fetchData();
       setShowModal(false);
       setEditingUser(null);
       setFormData({ fullName: '', email: '', password: '', role: 'client' });
-    } else {
-      const err = await res.json();
-      setError(err.message);
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Erreur', true);
     }
   };
 
   const handleDelete = async (userId) => {
-    if (!confirm('Supprimer cet utilisateur ?')) return;
-    const token = localStorage.getItem('token');
-    const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) fetchData();
-    else setError('Erreur suppression');
+    if (!window.confirm('Supprimer cet utilisateur ?')) return;
+    try {
+      await axios.delete(`/api/admin/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
+      showNotification('Utilisateur supprimé');
+      fetchData();
+    } catch (err) {
+      showNotification('Erreur suppression', true);
+    }
   };
 
   const changeRole = async (userId, newRole) => {
-    const token = localStorage.getItem('token');
-    await fetch(`/api/admin/users/${userId}/role`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ role: newRole })
-    });
-    fetchData();
+    try {
+      await axios.put(`/api/admin/users/${userId}/role`, { role: newRole }, { headers: { Authorization: `Bearer ${token}` } });
+      showNotification('Rôle mis à jour');
+      fetchData();
+    } catch (err) {
+      showNotification('Erreur mise à jour rôle', true);
+    }
   };
 
+  // --- Gestion des cours en attente ---
   const validateCourse = async (courseId) => {
-    const token = localStorage.getItem('token');
-    await fetch(`/api/admin/courses/${courseId}/validate`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } });
-    fetchData();
+    try {
+      await axios.put(`/api/admin/courses/${courseId}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      showNotification('Cours approuvé avec succès');
+      fetchData();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Erreur lors de l\'approbation', true);
+    }
   };
 
-  const deleteCourse = async (courseId) => {
-    const token = localStorage.getItem('token');
-    await fetch(`/api/admin/courses/${courseId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-    fetchData();
+  const rejectCourse = async () => {
+    if (!rejectCourseId) return;
+    try {
+      await axios.put(`/api/admin/courses/${rejectCourseId}/reject`, { message: rejectMessage }, { headers: { Authorization: `Bearer ${token}` } });
+      showNotification('Cours rejeté');
+      setShowRejectModal(false);
+      setRejectCourseId(null);
+      setRejectMessage('');
+      fetchData();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Erreur lors du rejet', true);
+    }
   };
 
-  // Graphique dynamique basé sur les données réelles (ex: utilisateurs créés par mois)
+  // Graphique (basé sur les dates de création des utilisateurs)
   const getMonthlyUserCounts = () => {
     const months = {};
     users.forEach(u => {
-      const date = new Date(u.createdAt);
-      const month = `${date.getFullYear()}-${date.getMonth()+1}`;
-      months[month] = (months[month] || 0) + 1;
+      if (u.createdAt) {
+        const date = new Date(u.createdAt);
+        const month = `${date.getFullYear()}-${date.getMonth() + 1}`;
+        months[month] = (months[month] || 0) + 1;
+      }
     });
     const labels = Object.keys(months).sort();
     const data = labels.map(l => months[l]);
@@ -109,24 +151,29 @@ export default function AdminDashboard() {
   const { labels, data } = getMonthlyUserCounts();
   const chartData = {
     labels: labels.length ? labels : ['Jan', 'Fév', 'Mar'],
-    datasets: [{ label: 'Nouveaux utilisateurs', data: data.length ? data : [0,0,0], borderColor: '#3b82f6', tension: 0.3 }]
+    datasets: [{ label: 'Nouveaux utilisateurs', data: data.length ? data : [0, 0, 0], borderColor: '#3b82f6', tension: 0.3 }]
   };
-
-  if (error) return <div className="alert alert-danger">{error}</div>;
 
   return (
     <div className="admin-dashboard">
       <h1 className="dashboard-title">Tableau de bord Admin</h1>
+      
+      {/* Notifications */}
+      {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">{error}<button type="button" className="btn-close" onClick={() => setError('')}></button></div>}
+      {success && <div className="alert alert-success alert-dismissible fade show" role="alert">{success}<button type="button" className="btn-close" onClick={() => setSuccess('')}></button></div>}
+
       <div className="stats-row">
         <div className="stat-card glass">👥 {stats.totalUsers} Utilisateurs</div>
         <div className="stat-card glass">📚 {stats.totalCourses} Cours en attente</div>
         <div className="stat-card glass">💰 {stats.totalRevenue} DT Revenus</div>
       </div>
+
       <div className="chart-container glass">
         <h3>Évolution mensuelle des inscriptions</h3>
         <Line data={chartData} />
       </div>
 
+      {/* Tableau des utilisateurs */}
       <div className="users-section glass">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2>Gestion des utilisateurs</h2>
@@ -137,10 +184,13 @@ export default function AdminDashboard() {
           <tbody>
             {users.map(u => (
               <tr key={u._id}>
-                <td>{u.fullName}</td><td>{u.email}</td>
+                <td>{u.fullName}</td>
+                <td>{u.email}</td>
                 <td>
                   <select value={u.role} onChange={e => changeRole(u._id, e.target.value)}>
-                    <option value="client">Client</option><option value="formateur">Formateur</option><option value="admin">Admin</option>
+                    <option value="client">Client</option>
+                    <option value="formateur">Formateur</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </td>
                 <td>
@@ -153,6 +203,7 @@ export default function AdminDashboard() {
         </table>
       </div>
 
+      {/* Cours en attente */}
       <div className="courses-section glass">
         <h2>Cours en attente</h2>
         <div className="pending-grid">
@@ -161,15 +212,17 @@ export default function AdminDashboard() {
               <h4>{c.title}</h4>
               <p>{c.description?.slice(0, 80)}...</p>
               <div className="btn-group">
-                <button className="btn-success" onClick={() => validateCourse(c._id)}>Valider</button>
-                <button className="btn-danger" onClick={() => deleteCourse(c._id)}>Refuser</button>
+                <button className="btn-info me-2" onClick={() => { setSelectedCourse(c); setShowCourseModal(true); }}>👁️ Voir détails</button>
+                <button className="btn-success me-2" onClick={() => validateCourse(c._id)}>Valider</button>
+                <button className="btn-danger" onClick={() => { setRejectCourseId(c._id); setShowRejectModal(true); }}>Refuser</button>
               </div>
             </div>
           ))}
+          {pendingCourses.length === 0 && <p>Aucun cours en attente.</p>}
         </div>
       </div>
 
-      {/* Modal Bootstrap (ajoutez Bootstrap JS si nécessaire) */}
+      {/* MODAL : Ajouter/Modifier utilisateur */}
       {showModal && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog">
@@ -184,7 +237,9 @@ export default function AdminDashboard() {
                   <input type="email" className="form-control mb-2" placeholder="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
                   {!editingUser && <input type="password" className="form-control mb-2" placeholder="Mot de passe" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />}
                   <select className="form-select" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                    <option value="client">Client</option><option value="formateur">Formateur</option><option value="admin">Admin</option>
+                    <option value="client">Client</option>
+                    <option value="formateur">Formateur</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
                 <div className="modal-footer">
@@ -192,6 +247,68 @@ export default function AdminDashboard() {
                   <button type="submit" className="btn btn-primary">Enregistrer</button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL : Visualisation détaillée d'un cours en attente */}
+      {showCourseModal && selectedCourse && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5>Détails du cours : {selectedCourse.title}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowCourseModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p><strong>Formateur :</strong> {selectedCourse.formateur?.fullName} ({selectedCourse.formateur?.email})</p>
+                <p><strong>Description :</strong> {selectedCourse.description}</p>
+                <p><strong>Catégorie :</strong> {selectedCourse.category}</p>
+                <p><strong>Prix :</strong> {selectedCourse.price} €</p>
+                <hr />
+                <h6>Sections :</h6>
+                {selectedCourse.sections?.map((section, idx) => (
+                  <div key={idx} className="card mb-2">
+                    <div className="card-body">
+                      <strong>{section.title}</strong> – {section.type === 'video' ? '🎥 Vidéo' : '📄 PDF'}
+                      {section.quiz && (
+                        <div className="mt-2">
+                          <span className="badge bg-secondary">Quiz</span>
+                          <p className="mt-1"><strong>Question :</strong> {section.quiz.question}</p>
+                          <p><strong>Type :</strong> {section.quiz.type === 'mcq' ? 'QCM' : 'Réponse libre'}</p>
+                          {section.quiz.options && <p><strong>Options :</strong> {section.quiz.options.join(', ')}</p>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowCourseModal(false)}>Fermer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL : Rejet avec message */}
+      {showRejectModal && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5>Rejeter le cours</h5>
+                <button type="button" className="btn-close" onClick={() => setShowRejectModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <label className="form-label">Message de rejet (optionnel)</label>
+                <textarea className="form-control" rows="3" value={rejectMessage} onChange={e => setRejectMessage(e.target.value)} placeholder="Expliquez au formateur pourquoi son cours est rejeté..."></textarea>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowRejectModal(false)}>Annuler</button>
+                <button className="btn btn-danger" onClick={rejectCourse}>Confirmer le rejet</button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,6 +1,8 @@
 const User = require('../models/User');
+const Course = require('../models/Course');
+const Quiz = require('../models/Quiz');
 
-// Récupérer tous les utilisateurs
+// ========== GESTION DES UTILISATEURS (existant, à conserver) ==========
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password');
@@ -10,7 +12,6 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Créer un utilisateur (admin)
 exports.createUser = async (req, res) => {
   try {
     const { fullName, email, password, role } = req.body;
@@ -26,7 +27,6 @@ exports.createUser = async (req, res) => {
   }
 };
 
-// Modifier un utilisateur (admin)
 exports.updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -34,7 +34,7 @@ exports.updateUser = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { fullName, email, role },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('-password');
     if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
     res.json(user);
@@ -43,7 +43,6 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// Supprimer un utilisateur (admin)
 exports.deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -54,7 +53,6 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-// Modifier le rôle d'un utilisateur (garde l'ancienne méthode)
 exports.changeUserRole = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -62,8 +60,66 @@ exports.changeUserRole = async (req, res) => {
     if (!['client', 'formateur', 'admin'].includes(role)) {
       return res.status(400).json({ message: 'Rôle invalide' });
     }
-    const user = await User.findByIdAndUpdate(userId, { role }, { new: true }).select('-password');
+    const user = await User.findByIdAndUpdate(userId, { role }, { returnDocument: 'after' }).select('-password');
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ========== NOUVELLES FONCTIONS POUR LA GESTION DES COURS EN ATTENTE ==========
+exports.getPendingCourses = async (req, res) => {
+  try {
+    const courses = await Course.find({ status: 'pending' })
+      .populate('formateur', 'fullName email')
+      .sort({ createdAt: -1 });
+    
+    // Pour chaque cours, on récupère les quizzes associés à chaque section
+    const coursesWithQuizzes = await Promise.all(courses.map(async (course) => {
+      const courseObj = course.toObject();
+      const sectionsWithQuizzes = await Promise.all(courseObj.sections.map(async (section) => {
+        if (section.quizId) {
+          const quiz = await Quiz.findById(section.quizId).select('question type options correctAnswer');
+          return { ...section, quiz: quiz || null };
+        }
+        return { ...section, quiz: null };
+      }));
+      courseObj.sections = sectionsWithQuizzes;
+      return courseObj;
+    }));
+    
+    res.json(coursesWithQuizzes);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.approveCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findByIdAndUpdate(
+      id,
+      { status: 'approved' },
+      { new: true, runValidators: true }
+    );
+    if (!course) return res.status(404).json({ message: 'Cours non trouvé' });
+    res.json({ message: 'Cours approuvé avec succès', course });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.rejectCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+    const course = await Course.findByIdAndUpdate(
+      id,
+      { status: 'rejected', rejectionMessage: message || '' },
+      { new: true, runValidators: true }
+    );
+    if (!course) return res.status(404).json({ message: 'Cours non trouvé' });
+    res.json({ message: 'Cours rejeté', course });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
