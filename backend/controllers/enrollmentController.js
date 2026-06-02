@@ -13,10 +13,13 @@ exports.buyCourse = async (req, res) => {
 
     const course = await Course.findById(courseId);
     if (!course || course.status !== 'approved') {
-      return res.status(404). json({ message: 'Cours non disponible' });
+      return res.status(404).json({ message: 'Cours non disponible' });
     }
 
     const enrollment = await Enrollment.create({ userId, courseId });
+    // ✅ Incrémenter le compteur d'étudiants dans le cours
+    await Course.findByIdAndUpdate(courseId, { $inc: { studentsCount: 1 } });
+
     res.status(201).json(enrollment);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -35,7 +38,6 @@ exports.getMyEnrollments = async (req, res) => {
   }
 };
 
-// Vérifier si l'utilisateur est inscrit à un cours
 exports.checkEnrollment = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -46,7 +48,6 @@ exports.checkEnrollment = async (req, res) => {
   }
 };
 
-// Mettre à jour la progression d'une section
 exports.updateProgress = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -55,7 +56,6 @@ exports.updateProgress = async (req, res) => {
     let enrollment = await Enrollment.findOne({ userId, courseId });
     if (!enrollment) return res.status(404).json({ message: 'Inscription non trouvée' });
     
-    // Mettre à jour sectionProgress
     const existing = enrollment.sectionProgress.find(sp => sp.sectionId.toString() === sectionId);
     if (existing) {
       existing.completed = completed;
@@ -64,7 +64,6 @@ exports.updateProgress = async (req, res) => {
       enrollment.sectionProgress.push({ sectionId, completed, completedAt: completed ? new Date() : null });
     }
     
-    // Recalculer le pourcentage global
     const course = await Course.findById(courseId);
     const totalSections = course.sections.length;
     const completedSections = enrollment.sectionProgress.filter(sp => sp.completed).length;

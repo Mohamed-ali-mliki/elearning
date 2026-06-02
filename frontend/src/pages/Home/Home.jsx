@@ -1,5 +1,8 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { savePendingEnrollment } from '../../utils/enrollmentUtils';
+import axios from 'axios';
 import { 
   FaGraduationCap, FaGlobe, FaHome, FaBookOpen, 
   FaStar, FaUserTie, FaClock, FaUser, FaArrowRight,
@@ -7,11 +10,39 @@ import {
 } from 'react-icons/fa';
 
 const Home = () => {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  // Récupération des cours approuvés
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/courses');
+        const approvedCourses = res.data.filter(c => c.status === 'approved');
+        setCourses(approvedCourses);
+      } catch (err) {
+        console.error('Erreur chargement cours:', err);
+        setError('Impossible de charger les cours. Veuillez réessayer plus tard.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCourses();
+  }, []);
+
+  const handleJoinNow = (courseId) => {
+    savePendingEnrollment(courseId);
+    navigate('/login');
+  };
+
+  // Initialisation des carrousels
   useEffect(() => {
     const $ = window.$;
     const WOW = window.WOW;
 
-    // Carrousel principal (header)
     if ($ && typeof $.fn.owlCarousel === 'function' && $('.header-carousel').length) {
       $('.header-carousel').owlCarousel({
         items: 1,
@@ -24,7 +55,6 @@ const Home = () => {
         navText: ['<i class="fa fa-chevron-left"></i>', '<i class="fa fa-chevron-right"></i>']
       });
     }
-    // Carrousel des témoignages (plusieurs items visibles)
     if ($ && typeof $.fn.owlCarousel === 'function' && $('.testimonial-carousel').length) {
       $('.testimonial-carousel').owlCarousel({
         items: 1,
@@ -43,7 +73,6 @@ const Home = () => {
         }
       });
     }
-    // Réinitialisation WOW (si besoin)
     if (typeof WOW !== 'undefined') {
       new WOW().init();
     }
@@ -51,10 +80,9 @@ const Home = () => {
 
   return (
     <>
-      {/* ==================== CARROUSEL HERO ==================== */}
+      {/* CARROUSEL HERO (identique à votre version) */}
       <div className="container-fluid p-0 mb-5">
         <div className="owl-carousel header-carousel position-relative">
-          {/* Slide 1 - Best Online Courses */}
           <div className="owl-carousel-item position-relative">
             <img className="img-fluid" src="/img/carousel-1.jpg" alt="Hero" />
             <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style={{ background: 'rgba(24, 29, 56, 0.7)' }}>
@@ -71,7 +99,6 @@ const Home = () => {
               </div>
             </div>
           </div>
-          {/* Slide 2 - Get Educated Online */}
           <div className="owl-carousel-item position-relative">
             <img className="img-fluid" src="/img/carousel-2.jpg" alt="Hero 2" />
             <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style={{ background: 'rgba(24, 29, 56, 0.7)' }}>
@@ -91,7 +118,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ==================== SERVICES ==================== */}
+      {/* SERVICES */}
       <div className="container-xxl py-5">
         <div className="container">
           <div className="row g-4">
@@ -135,7 +162,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ==================== ABOUT ==================== */}
+      {/* ABOUT */}
       <div className="container-xxl py-5">
         <div className="container">
           <div className="row g-5">
@@ -163,7 +190,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ==================== CATEGORIES ==================== */}
+      {/* CATEGORIES */}
       <div className="container-xxl py-5 category">
         <div className="container">
           <div className="text-center wow fadeInUp" data-wow-delay="0.1s">
@@ -197,103 +224,95 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ==================== POPULAR COURSES ==================== */}
+      {/* POPULAR COURSES (DYNAMIQUE) */}
       <div className="container-xxl py-5">
         <div className="container">
           <div className="text-center wow fadeInUp" data-wow-delay="0.1s">
             <h6 className="section-title bg-white text-center text-primary px-3">Courses</h6>
             <h1 className="mb-5">Popular Courses</h1>
           </div>
-          <div className="row g-4 justify-content-center">
-            <div className="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
-              <div className="course-item bg-light">
-                <div className="position-relative overflow-hidden">
-                  <img className="img-fluid" src="/img/course-1.jpg" alt="Course" />
-                  <div className="w-100 d-flex justify-content-center position-absolute bottom-0 start-0 mb-4">
-                    <a href="#" className="flex-shrink-0 btn btn-sm btn-primary px-3 border-end" style={{ borderRadius: '30px 0 0 30px' }}>Read More</a>
-                    <a href="#" className="flex-shrink-0 btn btn-sm btn-primary px-3" style={{ borderRadius: '0 30px 30px 0' }}>Join Now</a>
-                  </div>
-                </div>
-                <div className="text-center p-4 pb-0">
-                  <h3 className="mb-0">$149.00</h3>
-                  <div className="mb-3">
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <small>(123)</small>
-                  </div>
-                  <h5 className="mb-4">Web Design & Development Course for Beginners</h5>
-                </div>
-                <div className="d-flex border-top">
-                  <small className="flex-fill text-center border-end py-2"><FaUserTie className="text-primary me-2" />John Doe</small>
-                  <small className="flex-fill text-center border-end py-2"><FaClock className="text-primary me-2" />1.49 Hrs</small>
-                  <small className="flex-fill text-center py-2"><FaUser className="text-primary me-2" />30 Students</small>
-                </div>
+
+          {loading && (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Chargement...</span>
               </div>
             </div>
-            <div className="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
-              <div className="course-item bg-light">
-                <div className="position-relative overflow-hidden">
-                  <img className="img-fluid" src="/img/course-2.jpg" alt="Course" />
-                  <div className="w-100 d-flex justify-content-center position-absolute bottom-0 start-0 mb-4">
-                    <a href="#" className="flex-shrink-0 btn btn-sm btn-primary px-3 border-end" style={{ borderRadius: '30px 0 0 30px' }}>Read More</a>
-                    <a href="#" className="flex-shrink-0 btn btn-sm btn-primary px-3" style={{ borderRadius: '0 30px 30px 0' }}>Join Now</a>
-                  </div>
-                </div>
-                <div className="text-center p-4 pb-0">
-                  <h3 className="mb-0">$149.00</h3>
-                  <div className="mb-3">
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <small>(123)</small>
-                  </div>
-                  <h5 className="mb-4">Web Design & Development Course for Beginners</h5>
-                </div>
-                <div className="d-flex border-top">
-                  <small className="flex-fill text-center border-end py-2"><FaUserTie className="text-primary me-2" />John Doe</small>
-                  <small className="flex-fill text-center border-end py-2"><FaClock className="text-primary me-2" />1.49 Hrs</small>
-                  <small className="flex-fill text-center py-2"><FaUser className="text-primary me-2" />30 Students</small>
-                </div>
-              </div>
+          )}
+
+          {error && (
+            <div className="alert alert-danger text-center">{error}</div>
+          )}
+
+          {!loading && !error && courses.length === 0 && (
+            <div className="text-center py-5">
+              <p className="fs-4">Aucun cours disponible pour le moment.</p>
             </div>
-            <div className="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
-              <div className="course-item bg-light">
-                <div className="position-relative overflow-hidden">
-                  <img className="img-fluid" src="/img/course-3.jpg" alt="Course" />
-                  <div className="w-100 d-flex justify-content-center position-absolute bottom-0 start-0 mb-4">
-                    <a href="#" className="flex-shrink-0 btn btn-sm btn-primary px-3 border-end" style={{ borderRadius: '30px 0 0 30px' }}>Read More</a>
-                    <a href="#" className="flex-shrink-0 btn btn-sm btn-primary px-3" style={{ borderRadius: '0 30px 30px 0' }}>Join Now</a>
+          )}
+
+          {!loading && !error && courses.length > 0 && (
+            <div className="row g-4 justify-content-center">
+              {courses.map((course) => (
+                <div key={course._id} className="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                  <div className="course-item bg-light">
+                    <div className="position-relative overflow-hidden">
+                      <img
+                        className="img-fluid"
+                        src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/img/course-1.jpg'}
+                        alt={course.title}
+                        style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                      />
+                      <div className="w-100 d-flex justify-content-center position-absolute bottom-0 start-0 mb-4">
+                        <Link
+                          to={`/course/${course._id}`}
+                          className="flex-shrink-0 btn btn-sm btn-primary px-3 border-end"
+                          style={{ borderRadius: '30px 0 0 30px' }}
+                        >
+                          Read More
+                        </Link>
+                        <button
+                          onClick={() => handleJoinNow(course._id)}
+                          className="flex-shrink-0 btn btn-sm btn-primary px-3"
+                          style={{ borderRadius: '0 30px 30px 0' }}
+                        >
+                          Join Now
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-center p-4 pb-0">
+                      <h3 className="mb-0">{course.price ? `${course.price} $` : 'Gratuit'}</h3>
+                      <div className="mb-3">
+                        {[...Array(5)].map((_, i) => (
+                          <FaStar key={i} className="text-primary" />
+                        ))}
+                        <small>({course.studentsCount || 0} avis)</small>
+                      </div>
+                      <h5 className="mb-4">{course.title}</h5>
+                      <p className="text-muted small">{course.description?.substring(0, 80)}...</p>
+                    </div>
+                    <div className="d-flex border-top">
+                      <small className="flex-fill text-center border-end py-2">
+                        <FaUserTie className="text-primary me-2" />
+                        {course.formateur?.fullName || 'Formateur'}
+                      </small>
+                      <small className="flex-fill text-center border-end py-2">
+                        <FaClock className="text-primary me-2" />
+                        {course.duration || 'Variable'}
+                      </small>
+                      <small className="flex-fill text-center py-2">
+                        <FaUser className="text-primary me-2" />
+                        {course.studentsCount || 0} étudiants
+                      </small>
+                    </div>
                   </div>
                 </div>
-                <div className="text-center p-4 pb-0">
-                  <h3 className="mb-0">$149.00</h3>
-                  <div className="mb-3">
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <FaStar className="text-primary" />
-                    <small>(123)</small>
-                  </div>
-                  <h5 className="mb-4">Web Design & Development Course for Beginners</h5>
-                </div>
-                <div className="d-flex border-top">
-                  <small className="flex-fill text-center border-end py-2"><FaUserTie className="text-primary me-2" />John Doe</small>
-                  <small className="flex-fill text-center border-end py-2"><FaClock className="text-primary me-2" />1.49 Hrs</small>
-                  <small className="flex-fill text-center py-2"><FaUser className="text-primary me-2" />30 Students</small>
-                </div>
-              </div>
+              ))}
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* ==================== INSTRUCTORS ==================== */}
+      {/* INSTRUCTORS */}
       <div className="container-xxl py-5">
         <div className="container">
           <div className="text-center wow fadeInUp" data-wow-delay="0.1s">
@@ -377,7 +396,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ==================== TESTIMONIALS (carrousel horizontal) ==================== */}
+      {/* TESTIMONIALS */}
       <div className="container-xxl py-5 wow fadeInUp" data-wow-delay="0.1s">
         <div className="container">
           <div className="text-center">

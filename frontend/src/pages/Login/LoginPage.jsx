@@ -4,6 +4,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { FaGoogle, FaGithub } from 'react-icons/fa';
 import { HiEye, HiEyeOff } from 'react-icons/hi';
 import { useAuth } from '../../contexts/AuthContext';
+import { getPendingEnrollment, clearPendingEnrollment } from '../../utils/enrollmentUtils';
+import axios from 'axios';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -16,7 +18,26 @@ const LoginPage = () => {
     try {
       setError('');
       const user = await login(data.email, data.password);
-      // Redirection selon rôle
+      
+      // Vérifier s'il y a une inscription en attente
+      const pendingCourseId = getPendingEnrollment();
+      if (pendingCourseId) {
+        try {
+          await axios.post(`http://localhost:5000/api/enrollments/${pendingCourseId}/buy`, {}, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          clearPendingEnrollment();
+          // Rediriger vers le cours ou dashboard client
+          if (user.role === 'admin') navigate('/dashboard/admin');
+          else if (user.role === 'formateur') navigate('/dashboard/formateur');
+          else navigate(`/course/${pendingCourseId}`);
+          return;
+        } catch (err) {
+          console.error('Inscription automatique échouée', err);
+        }
+      }
+      
+      // Redirection normale selon rôle
       if (user.role === 'admin') navigate('/dashboard/admin');
       else if (user.role === 'formateur') navigate('/dashboard/formateur');
       else navigate('/dashboard/client');
