@@ -21,8 +21,8 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api', courseRoutes);
-app.use('/api/enrollments', enrollmentRoutes); // ✅ Correction
-app.use('/api/quiz', quizRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/quizzes', quizRoutes);  // ✅ corrigé (avec 's')
 app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {

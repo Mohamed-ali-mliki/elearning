@@ -5,7 +5,8 @@ const sectionSchema = new mongoose.Schema({
   type: { type: String, enum: ['video', 'pdf'], required: true },
   contentUrl: { type: String, required: true },
   duration: { type: Number, default: 0 },
-  quizId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' }
+  quizId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' },
+  quizRequired: { type: Boolean, default: true }   // ✅ champ ajouté
 });
 
 const courseSchema = new mongoose.Schema({
@@ -17,8 +18,8 @@ const courseSchema = new mongoose.Schema({
   formateur: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   sections: [sectionSchema],
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-  rejectionMessage: { type: String, default: '' }, // <-- AJOUTER CETTE LIGNE
-  studentsCount: { type: Number, default: 0 },
+  rejectionMessage: { type: String, default: '' },
+  studentsCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Course', courseSchema);

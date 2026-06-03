@@ -20,6 +20,7 @@ export default function FormateurDashboard() {
   const [currentSection, setCurrentSection] = useState(null);
   const [currentCourseId, setCurrentCourseId] = useState(null);
   const [quizQuestions, setQuizQuestions] = useState([]);
+  const [quizRequired, setQuizRequired] = useState(true); // ✅ AJOUTÉ
 
   const { register, handleSubmit, reset } = useForm();
 
@@ -78,7 +79,6 @@ export default function FormateurDashboard() {
     setLoading(true);
     const token = localStorage.getItem('token');
 
-    // 1. Créer le cours sans sections, sans thumbnail
     const courseRes = await fetch('/api/formateur/courses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -92,7 +92,6 @@ export default function FormateurDashboard() {
     const newCourse = await courseRes.json();
     const courseId = newCourse._id;
 
-    // 2. Uploader la thumbnail si présente
     if (thumbnailFile) {
       const thumbFormData = new FormData();
       thumbFormData.append('thumbnail', thumbnailFile);
@@ -103,24 +102,18 @@ export default function FormateurDashboard() {
       });
     }
 
-    // 3. Uploader chaque section avec son fichier
     for (let section of newCourseSections) {
       const formData = new FormData();
       formData.append('title', section.title);
       formData.append('type', section.type);
       formData.append('file', section.file);
-      const sectionRes = await fetch(`/api/formateur/courses/${courseId}/sections`, {
+      await fetch(`/api/formateur/courses/${courseId}/sections`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
-      if (!sectionRes.ok) {
-        setError(`Erreur upload section "${section.title}"`);
-        break;
-      }
     }
 
-    // 4. Rafraîchir
     await fetchCourses();
     await fetchStats();
     reset();
@@ -164,7 +157,7 @@ export default function FormateurDashboard() {
     if (res.ok) fetchCourses();
   };
 
-  // Quiz
+  // Quiz - version modifiée avec quizRequired
   const createQuiz = async (courseId, sectionId) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}`, {
@@ -173,13 +166,15 @@ export default function FormateurDashboard() {
       body: JSON.stringify({
         title: `Quiz pour ${currentSection.title}`,
         questions: quizQuestions,
-        passingScore: 70
+        passingScore: 70,
+        quizRequired: quizRequired   // ✅ ENVOI DU CHAMP
       })
     });
     if (res.ok) {
       alert('Quiz créé avec succès');
       setShowQuizModal(false);
       setQuizQuestions([]);
+      setQuizRequired(true);
       fetchCourses();
     } else setError('Erreur création quiz');
   };
@@ -193,7 +188,7 @@ export default function FormateurDashboard() {
         <div className="stat-card glass">📊 {Math.round(stats.avgProgress)}% Progression moyenne</div>
       </div>
 
-      {/* Formulaire de création de cours avec thumbnail et sections */}
+      {/* Formulaire de création de cours */}
       <div className="glass create-course">
         <h2>Créer un nouveau cours</h2>
         <form onSubmit={handleSubmit(onCreateCourse)}>
@@ -202,7 +197,6 @@ export default function FormateurDashboard() {
           <input {...register('category')} placeholder="Catégorie" />
           <input {...register('price')} type="number" placeholder="Prix (DT)" />
           
-          {/* Champ pour l'image de couverture */}
           <div className="mb-3">
             <label>Image de couverture (optionnel)</label>
             <input type="file" accept="image/jpeg,image/png" onChange={e => setThumbnailFile(e.target.files[0])} className="form-control" />
@@ -264,7 +258,22 @@ export default function FormateurDashboard() {
                       <li key={section._id}>
                         {section.title} ({section.type})
                         <button onClick={() => deleteSection(course._id, section._id)} className="btn-sm btn-danger ms-2">🗑️</button>
-                        <button onClick={() => { setCurrentSection(section); setCurrentCourseId(course._id); setShowQuizModal(true); }} className="btn-sm btn-primary ms-2">📝 Ajouter quiz</button>
+                        <button 
+                          onClick={() => { 
+                            setCurrentSection(section); 
+                            setCurrentCourseId(course._id); 
+                            setQuizQuestions([]); 
+                            setQuizRequired(true); 
+                            setShowQuizModal(true); 
+                          }} 
+                          className="btn-sm btn-primary ms-2"
+                        >
+                          📝 Ajouter quiz
+                        </button>
+                        {/* ✅ BADGE QUIZ PRÉSENT */}
+                        {section.quizId && (
+                          <span className="badge bg-success ms-2">✓ Quiz présent</span>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -288,9 +297,9 @@ export default function FormateurDashboard() {
         </div>
       </div>
 
-      {/* Modal création quiz */}
+      {/* Modal création quiz - avec checkbox quizRequired */}
       {showQuizModal && (
-        <div className="modal show d-block">
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
@@ -298,6 +307,20 @@ export default function FormateurDashboard() {
                 <button className="btn-close" onClick={() => setShowQuizModal(false)}></button>
               </div>
               <div className="modal-body">
+                {/* ✅ CHECKBOX QUIZ OBLIGATOIRE */}
+                <div className="mb-3 form-check">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id="quizRequiredCheckbox"
+                    checked={quizRequired}
+                    onChange={(e) => setQuizRequired(e.target.checked)}
+                  />
+                  <label className="form-check-label" htmlFor="quizRequiredCheckbox">
+                    Quiz obligatoire pour valider la section
+                  </label>
+                </div>
+
                 {quizQuestions.map((q, idx) => (
                   <div key={idx} className="border p-2 mb-2">
                     <input type="text" placeholder="Question" value={q.questionText} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].questionText = e.target.value; setQuizQuestions(newQ); }} className="form-control mb-1" />

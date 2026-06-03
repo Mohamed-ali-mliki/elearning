@@ -103,10 +103,12 @@ exports.getFormateurStats = async (req, res) => {
   }
 };
 
-// Récupérer un cours par ID (public)
+// ✅ Récupérer un cours par ID (public) AVEC population du quiz
 exports.getCourseById = async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id).populate('formateur', 'fullName');
+    const course = await Course.findById(req.params.id)
+      .populate('formateur', 'fullName')
+      .populate('sections.quizId');   // 👈 ESSENTIEL : peuple les quiz dans les sections
     if (!course) return res.status(404).json({ message: 'Cours non trouvé' });
     res.json(course);
   } catch (err) {
