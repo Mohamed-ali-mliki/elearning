@@ -8,7 +8,6 @@ exports.createQuizForSection = async (req, res) => {
     const { courseId, sectionId } = req.params;
     const { title, questions, passingScore, quizRequired } = req.body;
 
-    // Vérifications
     if (!title || !questions || questions.length === 0) {
       return res.status(400).json({ message: 'Titre et questions requis' });
     }
@@ -19,7 +18,6 @@ exports.createQuizForSection = async (req, res) => {
     const section = course.sections.id(sectionId);
     if (!section) return res.status(404).json({ message: 'Section non trouvée' });
 
-    // ✅ Création avec les champs obligatoires courseId et sectionId
     const quiz = await Quiz.create({
       title,
       questions,
@@ -39,7 +37,7 @@ exports.createQuizForSection = async (req, res) => {
   }
 };
 
-// Soumettre un quiz (étudiant)
+// Soumettre un quiz (étudiant) – version hybride
 exports.submitQuiz = async (req, res) => {
   try {
     const { courseId, sectionId } = req.params;
@@ -55,27 +53,70 @@ exports.submitQuiz = async (req, res) => {
     const quiz = section.quizId;
     let totalPoints = 0;
     let earnedPoints = 0;
+    const detailedAnswers = [];
+
     quiz.questions.forEach((q, idx) => {
-      totalPoints += q.points || 1;
-      const userAnswer = answers[idx];
+      const points = q.points || 1;
+      totalPoints += points;
+      const userAnswer = (answers[idx] || '').toString();
+
       if (q.type === 'multiple_choice') {
-        if (userAnswer == q.correctAnswer) earnedPoints += (q.points || 1);
-      } else if (q.type === 'open') {
-        earnedPoints += 0; // À noter manuellement plus tard
+        const earned = (userAnswer === q.correctAnswer) ? points : 0;
+        earnedPoints += earned;
+        detailedAnswers.push({
+          questionId: idx,
+          userAnswer,
+          autoScored: true,
+          needsReview: false,
+          earnedPoints: earned
+        });
+      } 
+      else if (q.type === 'open') {
+        const normalizedUser = userAnswer.trim().toLowerCase();
+        const normalizedCorrect = (q.correctAnswer || '').trim().toLowerCase();
+        const isExactMatch = (normalizedCorrect !== '' && normalizedUser === normalizedCorrect);
+        const earned = isExactMatch ? points : 0;
+        earnedPoints += earned;
+        detailedAnswers.push({
+          questionId: idx,
+          userAnswer,
+          autoScored: isExactMatch,
+          needsReview: !isExactMatch,
+          earnedPoints: earned
+        });
       }
     });
+
     const score = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
     const passed = score >= (quiz.passingScore || 70);
 
     let enrollment = await Enrollment.findOne({ userId, courseId });
     if (!enrollment) return res.status(403).json({ message: 'Non inscrit' });
 
-    const existingIndex = enrollment.quizScores.findIndex(qs => qs.quizId.toString() === quiz._id.toString());
-    if (existingIndex !== -1) {
-      enrollment.quizScores[existingIndex].score = score;
+    // Mettre à jour quizScores
+    const existingScoreIndex = enrollment.quizScores.findIndex(qs => qs.quizId.toString() === quiz._id.toString());
+    if (existingScoreIndex !== -1) {
+      enrollment.quizScores[existingScoreIndex].score = score;
     } else {
       enrollment.quizScores.push({ quizId: quiz._id, score });
     }
+
+    // Mettre à jour quizSubmissions (si le champ existe)
+    if (enrollment.quizSubmissions) {
+      const existingSubIndex = enrollment.quizSubmissions.findIndex(sub => sub.quizId.toString() === quiz._id.toString());
+      const newSubmission = {
+        quizId: quiz._id,
+        answers: detailedAnswers,
+        submittedAt: new Date(),
+        reviewed: false
+      };
+      if (existingSubIndex !== -1) {
+        enrollment.quizSubmissions[existingSubIndex] = newSubmission;
+      } else {
+        enrollment.quizSubmissions.push(newSubmission);
+      }
+    }
+
     await enrollment.save();
 
     res.json({ score, passed, message: passed ? 'Quiz réussi !' : 'Score insuffisant, réessayez' });

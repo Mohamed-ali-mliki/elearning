@@ -4,12 +4,14 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-    if (token && storedUser) {
+    if (storedToken && storedUser) {
+      setToken(storedToken);
       setUser(JSON.parse(storedUser));
     }
     setLoading(false);
@@ -24,7 +26,6 @@ export const AuthProvider = ({ children }) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Erreur de connexion');
     
-    // Notre backend retourne : { _id, fullName, email, role, token }
     const userData = {
       id: data._id,
       fullName: data.fullName,
@@ -33,6 +34,7 @@ export const AuthProvider = ({ children }) => {
     };
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(userData));
+    setToken(data.token);
     setUser(userData);
     return userData;
   };
@@ -54,6 +56,7 @@ export const AuthProvider = ({ children }) => {
     };
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(userData));
+    setToken(data.token);
     setUser(userData);
     return userData;
   };
@@ -61,11 +64,12 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setToken(null);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
