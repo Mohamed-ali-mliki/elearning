@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import './CourseList.css'; // ← on importe le CSS
 
 const CourseList = () => {
   const [courses, setCourses] = useState([]);
@@ -57,13 +58,19 @@ const CourseList = () => {
         {filteredCourses.length === 0 && <p className="text-center">Aucun cours trouvé.</p>}
         {filteredCourses.map(course => (
           <div key={course._id} className="col-md-4 mb-4">
-            <div className="card h-100 shadow-sm">
-              <img src={course.thumbnail || '/placeholder-course.jpg'} className="card-img-top" alt={course.title} style={{ height: '200px', objectFit: 'cover' }} />
+            <div className="card h-100 shadow-sm border-0 rounded-4 course-card">
+              {/* Image avec chemin corrigé comme dans Home.jsx */}
+              <img 
+                src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/img/course-1.jpg'} 
+                className="card-img-top rounded-top-4" 
+                alt={course.title} 
+                style={{ height: '200px', objectFit: 'cover' }}
+              />
               <div className="card-body">
                 <h5 className="card-title">{course.title}</h5>
                 <p className="card-text">{course.description?.substring(0, 100)}...</p>
-                <p className="text-primary fw-bold">{course.price} DT</p>
-                <Link to={`/courses/${course._id}`} className="btn btn-primary">Voir détails</Link>
+                <p className="text-primary fw-bold fs-4">{course.price} DT</p>
+                <Link to={`/courses/${course._id}`} className="btn btn-primary rounded-pill px-4">Voir détails</Link>
               </div>
             </div>
           </div>

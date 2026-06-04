@@ -70,13 +70,19 @@ const CourseDetail = () => {
     <div className="container my-5">
       <div className="row">
         <div className="col-md-8">
-          <img src={course?.thumbnail || '/placeholder-course.jpg'} className="img-fluid rounded" alt={course?.title} />
-          <h1 className="mt-4">{course?.title}</h1>
+          {/* Image avec le même chemin que Home */}
+          <img 
+            src={course?.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/img/course-1.jpg'} 
+            className="img-fluid rounded-4 shadow mb-4" 
+            alt={course?.title} 
+            style={{ maxHeight: '400px', width: '100%', objectFit: 'cover' }}
+          />
+          <h1 className="mt-2">{course?.title}</h1>
           <p className="lead">{course?.description}</p>
           <p><strong>Catégorie :</strong> {course?.category}</p>
           <p><strong>Formateur :</strong> {course?.formateur?.fullName || 'Instructeur'}</p>
           <h3>Contenu du cours</h3>
-          <ul className="list-group">
+          <ul className="list-group mb-4">
             {course?.sections?.map((section, idx) => (
               <li key={idx} className="list-group-item">
                 {section.title} - {section.type === 'video' ? '🎥 Vidéo' : '📄 PDF'}
@@ -85,14 +91,21 @@ const CourseDetail = () => {
           </ul>
         </div>
         <div className="col-md-4">
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <h5 className="card-title">Prix : {course?.price} DT</h5>
+          <div className="card shadow-lg border-0 rounded-4 sticky-top" style={{ top: '20px' }}>
+            <div className="card-body text-center p-4">
+              <h2 className="text-primary mb-3">{course?.price} DT</h2>
+              <hr />
+              <ul className="list-unstyled text-start mb-4">
+                <li><i className="bi bi-check-circle-fill text-success me-2"></i> Accès à vie</li>
+                <li><i className="bi bi-check-circle-fill text-success me-2"></i> Certificat de complétion</li>
+                <li><i className="bi bi-check-circle-fill text-success me-2"></i> Support 24/7</li>
+              </ul>
               {isEnrolled ? (
-                <Link to={`/watch/${course?._id}`} className="btn btn-success w-100">Accéder au cours</Link>
+                <Link to={`/watch/${course?._id}`} className="btn btn-success btn-lg w-100 rounded-pill">Accéder au cours</Link>
               ) : (
-                <button onClick={handleEnroll} className="btn btn-primary w-100">S'inscrire maintenant</button>
+                <button onClick={handleEnroll} className="btn btn-primary btn-lg w-100 rounded-pill">S'inscrire maintenant</button>
               )}
+              <small className="text-muted d-block mt-3">Satisfait ou remboursé sous 30 jours</small>
             </div>
           </div>
         </div>
