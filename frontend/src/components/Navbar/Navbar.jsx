@@ -7,15 +7,12 @@ import './Navbar.css';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
-
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [navbarCollapsed, setNavbarCollapsed] = useState(true);
-
   const [darkMode, setDarkMode] = useState(
     localStorage.getItem('theme') === 'dark'
   );
-
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,7 +26,6 @@ const Navbar = () => {
   }, [darkMode]);
 
   const handleLoginRedirect = () => navigate('/login');
-
   const handleSignupRedirect = () => navigate('/signup');
 
   const handleLogout = () => {
@@ -38,18 +34,17 @@ const Navbar = () => {
     navigate('/');
   };
 
+  // ✅ Modification importante : redirection vers /courses avec paramètre search
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log('Recherche :', searchTerm);
+    if (searchTerm.trim()) {
+      navigate(`/courses?search=${encodeURIComponent(searchTerm.trim())}`);
+      setSearchTerm(''); // optionnel : vider la barre après recherche
+    }
   };
 
-  const closeNavbar = () => {
-    setNavbarCollapsed(true);
-  };
-
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
-  };
+  const closeNavbar = () => setNavbarCollapsed(true);
+  const toggleTheme = () => setDarkMode(!darkMode);
 
   return (
     <nav
@@ -58,11 +53,7 @@ const Navbar = () => {
       }`}
     >
       <div className="container-fluid px-0">
-        <Link
-          to="/"
-          className="navbar-brand d-flex align-items-center"
-          onClick={closeNavbar}
-        >
+        <Link to="/" className="navbar-brand d-flex align-items-center" onClick={closeNavbar}>
           <h2 className="m-0 text-primary">
             <i className="fa fa-book me-3"></i>
             eLEARNING
@@ -77,35 +68,12 @@ const Navbar = () => {
           <span className="navbar-toggler-icon"></span>
         </button>
 
-        <div
-          className={`collapse navbar-collapse ${
-            navbarCollapsed ? '' : 'show'
-          }`}
-        >
+        <div className={`collapse navbar-collapse ${navbarCollapsed ? '' : 'show'}`}>
           <ul className="navbar-nav ms-auto p-3 p-lg-0">
-            <li className="nav-item">
-              <Link to="/" className="nav-link" onClick={closeNavbar}>
-                Home
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link to="/about" className="nav-link" onClick={closeNavbar}>
-                About
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link to="/courses" className="nav-link" onClick={closeNavbar}>
-                Courses
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link to="/contact" className="nav-link" onClick={closeNavbar}>
-                Contact
-              </Link>
-            </li>
+            <li className="nav-item"><Link to="/" className="nav-link" onClick={closeNavbar}>Home</Link></li>
+            <li className="nav-item"><Link to="/about" className="nav-link" onClick={closeNavbar}>About</Link></li>
+            <li className="nav-item"><Link to="/courses" className="nav-link" onClick={closeNavbar}>Courses</Link></li>
+            <li className="nav-item"><Link to="/contact" className="nav-link" onClick={closeNavbar}>Contact</Link></li>
           </ul>
 
           <form className="search-form" onSubmit={handleSearch}>
@@ -117,110 +85,35 @@ const Navbar = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-
               <button className="btn btn-primary" type="submit">
                 <i className="fas fa-search"></i>
               </button>
             </div>
           </form>
 
-          {/* Dark Mode Button */}
-          <button
-            className="btn btn-outline-secondary me-3"
-            onClick={toggleTheme}
-          >
-            {darkMode ? (
-              <i className="fas fa-sun"></i>
-            ) : (
-              <i className="fas fa-moon"></i>
-            )}
+          <button className="btn btn-outline-secondary me-3" onClick={toggleTheme}>
+            {darkMode ? <i className="fas fa-sun"></i> : <i className="fas fa-moon"></i>}
           </button>
 
           <div className="auth-buttons ms-lg-3 mt-3 mt-lg-0">
             {!user ? (
               <>
-                <button
-                  className="btn btn-outline-primary me-2"
-                  onClick={handleLoginRedirect}
-                >
-                  Login
-                </button>
-
-                <button
-                  className="btn btn-primary"
-                  onClick={handleSignupRedirect}
-                >
-                  Signup
-                </button>
+                <button className="btn btn-outline-primary me-2" onClick={handleLoginRedirect}>Login</button>
+                <button className="btn btn-primary" onClick={handleSignupRedirect}>Signup</button>
               </>
             ) : (
-              <div
-                className="dropdown"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-              >
+              <div className="dropdown" onClick={() => setDropdownOpen(!dropdownOpen)}>
                 <button className="btn btn-light dropdown-toggle d-flex align-items-center">
-                  <img
-                    src="/avatar-placeholder.png"
-                    alt="avatar"
-                    className="rounded-circle me-2"
-                    width="32"
-                    height="32"
-                  />
-
+                  <img src="/avatar-placeholder.png" alt="avatar" className="rounded-circle me-2" width="32" height="32" />
                   {user.name || 'User'}
                 </button>
-
                 {dropdownOpen && (
-                  <ul
-                    className="dropdown-menu show"
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: '100%',
-                    }}
-                  >
-                    <li>
-                      <Link
-                        className="dropdown-item"
-                        to="/dashboard/client"
-                        onClick={closeNavbar}
-                      >
-                        Dashboard
-                      </Link>
-                    </li>
-
-                    <li>
-                      <Link
-                        className="dropdown-item"
-                        to="/my-courses"
-                        onClick={closeNavbar}
-                      >
-                        My Courses
-                      </Link>
-                    </li>
-
-                    <li>
-                      <Link
-                        className="dropdown-item"
-                        to="/settings"
-                        onClick={closeNavbar}
-                      >
-                        Settings
-                      </Link>
-                    </li>
-
-                    <li>
-                      <hr className="dropdown-divider" />
-                    </li>
-
-                    <li>
-                      <button
-                        className="dropdown-item"
-                        onClick={handleLogout}
-                      >
-                        Logout
-                      </button>
-                    </li>
+                  <ul className="dropdown-menu show" style={{ position: 'absolute', right: 0, top: '100%' }}>
+                    <li><Link className="dropdown-item" to="/dashboard/client" onClick={closeNavbar}>Dashboard</Link></li>
+                    <li><Link className="dropdown-item" to="/my-courses" onClick={closeNavbar}>My Courses</Link></li>
+                    <li><Link className="dropdown-item" to="/settings" onClick={closeNavbar}>Settings</Link></li>
+                    <li><hr className="dropdown-divider" /></li>
+                    <li><button className="dropdown-item" onClick={handleLogout}>Logout</button></li>
                   </ul>
                 )}
               </div>

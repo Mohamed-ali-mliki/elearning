@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import './CourseList.css'; // ← on importe le CSS
+import { Link, useSearchParams } from 'react-router-dom';
+import './CourseList.css';
 
 const CourseList = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [category, setCategory] = useState('');
 
+  // Chargement des cours depuis l'API
   useEffect(() => {
     const fetchCourses = async () => {
       try {
@@ -24,6 +26,24 @@ const CourseList = () => {
     fetchCourses();
   }, []);
 
+  // Synchronisation : quand l'URL change, on met à jour le champ recherche
+  useEffect(() => {
+    const searchFromUrl = searchParams.get('search') || '';
+    setSearchTerm(searchFromUrl);
+  }, [searchParams]);
+
+  // Gestion de la saisie dans le champ de recherche (mise à jour locale + URL)
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    if (value) {
+      setSearchParams({ search: value });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  // Filtrage des cours (titre + catégorie)
   const filteredCourses = courses.filter(course => {
     const matchSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchCategory = category === '' || course.category === category;
@@ -42,7 +62,7 @@ const CourseList = () => {
             className="form-control"
             placeholder="Rechercher un cours..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
           />
         </div>
         <div className="col-md-3 mx-auto">
@@ -59,11 +79,10 @@ const CourseList = () => {
         {filteredCourses.map(course => (
           <div key={course._id} className="col-md-4 mb-4">
             <div className="card h-100 shadow-sm border-0 rounded-4 course-card">
-              {/* Image avec chemin corrigé comme dans Home.jsx */}
-              <img 
-                src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/img/course-1.jpg'} 
-                className="card-img-top rounded-top-4" 
-                alt={course.title} 
+              <img
+                src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/img/course-1.jpg'}
+                className="card-img-top rounded-top-4"
+                alt={course.title}
                 style={{ height: '200px', objectFit: 'cover' }}
               />
               <div className="card-body">
