@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './AdminDashboard.css';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 export default function AdminDashboard() {
   const { token: contextToken } = useAuth();
@@ -20,16 +20,12 @@ export default function AdminDashboard() {
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({ fullName: '', email: '', password: '', role: 'client' });
   
-  // États pour la modale de visualisation d’un cours en attente
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showCourseModal, setShowCourseModal] = useState(false);
-  
-  // États pour le rejet avec message
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectCourseId, setRejectCourseId] = useState(null);
   const [rejectMessage, setRejectMessage] = useState('');
 
-  // Chargement initial
   useEffect(() => {
     if (token) {
       fetchData();
@@ -58,7 +54,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Afficher une notification temporaire
   const showNotification = (msg, isError = false) => {
     if (isError) setError(msg);
     else setSuccess(msg);
@@ -68,7 +63,7 @@ export default function AdminDashboard() {
     }, 4000);
   };
 
-  // --- Gestion des utilisateurs ---
+  // --- Gestion utilisateurs ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -109,7 +104,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- Gestion des cours en attente ---
+  // --- Gestion cours ---
   const validateCourse = async (courseId) => {
     try {
       await axios.put(`/api/admin/courses/${courseId}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } });
@@ -134,46 +129,94 @@ export default function AdminDashboard() {
     }
   };
 
-  // Graphique (basé sur les dates de création des utilisateurs)
-  const getMonthlyUserCounts = () => {
-    const months = {};
-    users.forEach(u => {
-      if (u.createdAt) {
-        const date = new Date(u.createdAt);
-        const month = `${date.getFullYear()}-${date.getMonth() + 1}`;
-        months[month] = (months[month] || 0) + 1;
-      }
+  // --- Graphique professionnel (6 derniers mois glissants) ---
+  const getLast6MonthsChartData = () => {
+    const months = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const label = d.toLocaleString('fr-FR', { month: 'short', year: 'numeric' });
+      months.push({ label, year: d.getFullYear(), month: d.getMonth() });
+    }
+    
+    const counts = months.map(m => {
+      return users.filter(u => {
+        if (!u.createdAt) return false;
+        const created = new Date(u.createdAt);
+        return created.getFullYear() === m.year && created.getMonth() === m.month;
+      }).length;
     });
-    const labels = Object.keys(months).sort();
-    const data = labels.map(l => months[l]);
-    return { labels, data };
+    
+    return { labels: months.map(m => m.label), data: counts };
   };
-  const { labels, data } = getMonthlyUserCounts();
+
+  const { labels, data } = getLast6MonthsChartData();
+  
   const chartData = {
-    labels: labels.length ? labels : ['Jan', 'Fév', 'Mar'],
-    datasets: [{ label: 'Nouveaux utilisateurs', data: data.length ? data : [0, 0, 0], borderColor: '#3b82f6', tension: 0.3 }]
+    labels: labels,
+    datasets: [
+      {
+        label: 'Nouveaux utilisateurs',
+        data: data,
+        fill: true,
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: '#3b82f6',
+        borderWidth: 2,
+        tension: 0.3,
+        pointBackgroundColor: '#3b82f6',
+        pointBorderColor: '#fff',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      }
+    ]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: { font: { size: 13, weight: 'bold' }, color: '#1e293b' }
+      },
+      tooltip: {
+        backgroundColor: '#1e293b',
+        titleColor: '#fff',
+        bodyColor: '#e2e8f0',
+        callbacks: {
+          label: (context) => `${context.dataset.label}: ${context.raw} inscription(s)`
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: '#e2e8f0', drawBorder: true },
+        title: { display: true, text: 'Nombre d\'inscriptions', color: '#475569' }
+      },
+      x: {
+        grid: { display: false },
+        title: { display: true, text: 'Mois', color: '#475569' }
+      }
+    },
+    animation: { duration: 1000, easing: 'easeOutQuart' }
   };
 
   return (
     <div className="admin-dashboard">
       <h1 className="dashboard-title">Tableau de bord Admin</h1>
       
-      {/* Notifications */}
       {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">{error}<button type="button" className="btn-close" onClick={() => setError('')}></button></div>}
       {success && <div className="alert alert-success alert-dismissible fade show" role="alert">{success}<button type="button" className="btn-close" onClick={() => setSuccess('')}></button></div>}
 
+      {/* Section des statistiques (inchangée) */}
       <div className="stats-row">
         <div className="stat-card glass">👥 {stats.totalUsers} Utilisateurs</div>
         <div className="stat-card glass">📚 {stats.totalCourses} Cours en attente</div>
         <div className="stat-card glass">💰 {stats.totalRevenue} DT Revenus</div>
       </div>
 
-      <div className="chart-container glass">
-        <h3>Évolution mensuelle des inscriptions</h3>
-        <Line data={chartData} />
-      </div>
-
-      {/* Tableau des utilisateurs */}
+      {/* Gestion des utilisateurs (placée avant le graphique) */}
       <div className="users-section glass">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2>Gestion des utilisateurs</h2>
@@ -222,6 +265,14 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Graphique professionnel (maintenant en bas) */}
+      <div className="chart-container glass">
+        <h3>Évolution mensuelle des inscriptions</h3>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <Line data={chartData} options={chartOptions} />
+        </div>
+      </div>
+
       {/* MODAL : Ajouter/Modifier utilisateur */}
       {showModal && (
         <div className="modal show d-block" tabIndex="-1">
@@ -252,7 +303,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* MODAL : Visualisation détaillée d'un cours en attente */}
+      {/* MODAL : Visualisation détaillée d'un cours */}
       {showCourseModal && selectedCourse && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog modal-lg">
