@@ -1,0 +1,104 @@
+/* Styles personnalisés pour la page Contact */
+/* Pas de framework, du CSS "à l'ancienne" pour un rendu unique */
+
+.contact-header-bg {
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), 
+              url('https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg?auto=compress&cs=tinysrgb&w=1600');
+  background-size: cover;
+  background-position: center 40%;
+  height: 380px;
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.overlay-dark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.contact-header-bg .container {
+  height: 100%;
+  position: relative;
+  z-index: 5;
+}
+
+.divider-custom {
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, #0d6efd, #0a58ca);
+  border-radius: 2px;
+}
+
+.icon-circle {
+  transition: transform 0.2s ease;
+}
+
+.icon-circle:hover {
+  transform: scale(1.05);
+}
+
+.card {
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 1rem 2rem rgba(0,0,0,0.1) !important;
+}
+
+.form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.2);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #0b5ed7, #094a9e);
+  transform: scale(1.02);
+}
+
+.social-links a {
+  transition: opacity 0.2s;
+}
+
+.social-links a:hover {
+  opacity: 0.7;
+}
+
+/* Responsive : tableau de bord des infos */
+@media (max-width: 768px) {
+  .contact-header-bg {
+    height: 280px;
+  }
+  .display-2 {
+    font-size: 2.5rem;
+  }
+  .btn-lg.rounded-pill {
+    width: 100%;
+  }
+}
+
+/* Petite touche personnelle : animation de fade sur les alertes */
+.alert {
+  animation: fadeSlideDown 0.4s ease-out;
+}
+
+@keyframes fadeSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
