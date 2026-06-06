@@ -5,6 +5,9 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './AdminDashboard.css';
+// Import des icônes professionnelles
+import { FaUsers, FaBookOpen, FaMoneyBillWave, FaUserPlus, FaEdit, FaTrashAlt, FaEye, FaCheck, FaSyncAlt, FaEnvelope, FaTimes } from 'react-icons/fa';
+import { MdOutlineMarkEmailUnread } from 'react-icons/md';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -26,16 +29,21 @@ export default function AdminDashboard() {
   const [rejectCourseId, setRejectCourseId] = useState(null);
   const [rejectMessage, setRejectMessage] = useState('');
 
+  const [messages, setMessages] = useState([]);
+  const [activeTab, setActiveTab] = useState('users');
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+
   useEffect(() => {
     if (token) {
       fetchData();
+      fetchMessages();
     }
   }, [token]);
 
   const fetchData = async () => {
     try {
       if (!token) return;
-      
       const [usersRes, coursesRes] = await Promise.all([
         axios.get('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
         axios.get('/api/admin/courses/pending', { headers: { Authorization: `Bearer ${token}` } })
@@ -54,6 +62,36 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchMessages = async () => {
+    try {
+      const res = await axios.get('/api/admin/messages', { headers: { Authorization: `Bearer ${token}` } });
+      setMessages(res.data);
+    } catch (err) {
+      console.error('Erreur chargement messages', err);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await axios.put(`/api/admin/messages/${id}/read`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      fetchMessages();
+      showNotification('Message marqué comme lu');
+    } catch (err) {
+      showNotification('Erreur', true);
+    }
+  };
+
+  const deleteMessage = async (id) => {
+    if (!window.confirm('Supprimer ce message définitivement ?')) return;
+    try {
+      await axios.delete(`/api/admin/messages/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      fetchMessages();
+      showNotification('Message supprimé');
+    } catch (err) {
+      showNotification('Erreur suppression', true);
+    }
+  };
+
   const showNotification = (msg, isError = false) => {
     if (isError) setError(msg);
     else setSuccess(msg);
@@ -63,7 +101,7 @@ export default function AdminDashboard() {
     }, 4000);
   };
 
-  // --- Gestion utilisateurs ---
+  // Gestion utilisateurs
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -104,7 +142,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- Gestion cours ---
+  // Gestion cours
   const validateCourse = async (courseId) => {
     try {
       await axios.put(`/api/admin/courses/${courseId}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } });
@@ -129,7 +167,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- Graphique professionnel (6 derniers mois glissants) ---
+  // Graphique
   const getLast6MonthsChartData = () => {
     const months = [];
     const now = new Date();
@@ -138,7 +176,6 @@ export default function AdminDashboard() {
       const label = d.toLocaleString('fr-FR', { month: 'short', year: 'numeric' });
       months.push({ label, year: d.getFullYear(), month: d.getMonth() });
     }
-    
     const counts = months.map(m => {
       return users.filter(u => {
         if (!u.createdAt) return false;
@@ -146,58 +183,37 @@ export default function AdminDashboard() {
         return created.getFullYear() === m.year && created.getMonth() === m.month;
       }).length;
     });
-    
     return { labels: months.map(m => m.label), data: counts };
   };
 
   const { labels, data } = getLast6MonthsChartData();
-  
   const chartData = {
     labels: labels,
-    datasets: [
-      {
-        label: 'Nouveaux utilisateurs',
-        data: data,
-        fill: true,
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        borderColor: '#3b82f6',
-        borderWidth: 2,
-        tension: 0.3,
-        pointBackgroundColor: '#3b82f6',
-        pointBorderColor: '#fff',
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      }
-    ]
+    datasets: [{
+      label: 'Nouveaux utilisateurs',
+      data: data,
+      fill: true,
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      borderColor: '#3b82f6',
+      borderWidth: 2,
+      tension: 0.3,
+      pointBackgroundColor: '#3b82f6',
+      pointBorderColor: '#fff',
+      pointRadius: 4,
+      pointHoverRadius: 6,
+    }]
   };
 
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: true,
     plugins: {
-      legend: {
-        position: 'top',
-        labels: { font: { size: 13, weight: 'bold' }, color: '#1e293b' }
-      },
-      tooltip: {
-        backgroundColor: '#1e293b',
-        titleColor: '#fff',
-        bodyColor: '#e2e8f0',
-        callbacks: {
-          label: (context) => `${context.dataset.label}: ${context.raw} inscription(s)`
-        }
-      }
+      legend: { position: 'top', labels: { font: { size: 13, weight: 'bold' }, color: '#1e293b' } },
+      tooltip: { backgroundColor: '#1e293b', titleColor: '#fff', bodyColor: '#e2e8f0', callbacks: { label: (context) => `${context.dataset.label}: ${context.raw} inscription(s)` } }
     },
     scales: {
-      y: {
-        beginAtZero: true,
-        grid: { color: '#e2e8f0', drawBorder: true },
-        title: { display: true, text: 'Nombre d\'inscriptions', color: '#475569' }
-      },
-      x: {
-        grid: { display: false },
-        title: { display: true, text: 'Mois', color: '#475569' }
-      }
+      y: { beginAtZero: true, grid: { color: '#e2e8f0' }, title: { display: true, text: 'Nombre d\'inscriptions', color: '#475569' } },
+      x: { grid: { display: false }, title: { display: true, text: 'Mois', color: '#475569' } }
     },
     animation: { duration: 1000, easing: 'easeOutQuart' }
   };
@@ -206,67 +222,155 @@ export default function AdminDashboard() {
     <div className="admin-dashboard">
       <h1 className="dashboard-title">Tableau de bord Admin</h1>
       
-      {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">{error}<button type="button" className="btn-close" onClick={() => setError('')}></button></div>}
-      {success && <div className="alert alert-success alert-dismissible fade show" role="alert">{success}<button type="button" className="btn-close" onClick={() => setSuccess('')}></button></div>}
+      {error && <div className="alert alert-danger">{error}<button type="button" className="btn-close" onClick={() => setError('')}></button></div>}
+      {success && <div className="alert alert-success">{success}<button type="button" className="btn-close" onClick={() => setSuccess('')}></button></div>}
 
-      {/* Section des statistiques (inchangée) */}
       <div className="stats-row">
-        <div className="stat-card glass">👥 {stats.totalUsers} Utilisateurs</div>
-        <div className="stat-card glass">📚 {stats.totalCourses} Cours en attente</div>
-        <div className="stat-card glass">💰 {stats.totalRevenue} DT Revenus</div>
+        <div className="stat-card glass"><FaUsers className="me-2" /> {stats.totalUsers} Utilisateurs</div>
+        <div className="stat-card glass"><FaBookOpen className="me-2" /> {stats.totalCourses} Cours en attente</div>
+        <div className="stat-card glass"><FaMoneyBillWave className="me-2" /> {stats.totalRevenue} DT Revenus</div>
       </div>
 
-      {/* Gestion des utilisateurs (placée avant le graphique) */}
-      <div className="users-section glass">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2>Gestion des utilisateurs</h2>
-          <button className="btn btn-primary" onClick={() => { setEditingUser(null); setFormData({ fullName: '', email: '', password: '', role: 'client' }); setShowModal(true); }}>+ Ajouter</button>
+      {/* Onglets */}
+      <ul className="nav nav-tabs mb-4">
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+            <FaUsers className="me-1" /> Utilisateurs
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'courses' ? 'active' : ''}`} onClick={() => setActiveTab('courses')}>
+            <FaBookOpen className="me-1" /> Cours en attente
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'messages' ? 'active' : ''}`} onClick={() => setActiveTab('messages')}>
+            <FaEnvelope className="me-1" /> Messages <span className="badge bg-danger ms-1">{messages.filter(m => !m.isRead).length}</span>
+          </button>
+        </li>
+      </ul>
+
+      {/* Onglet Utilisateurs */}
+      {activeTab === 'users' && (
+        <div className="users-section glass">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h2>Gestion des utilisateurs</h2>
+            <button className="btn btn-primary" onClick={() => { setEditingUser(null); setFormData({ fullName: '', email: '', password: '', role: 'client' }); setShowModal(true); }}>
+              <FaUserPlus className="me-1" /> Ajouter
+            </button>
+          </div>
+          <table className="user-table">
+            <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Actions</th></tr></thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u._id}>
+                  <td>{u.fullName}</td>
+                  <td>{u.email}</td>
+                  <td>
+                    <select value={u.role} onChange={e => changeRole(u._id, e.target.value)}>
+                      <option value="client">Client</option>
+                      <option value="formateur">Formateur</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </td>
+                  <td>
+                    <button className="btn-sm btn-warning me-2" onClick={() => { setEditingUser(u); setFormData({ fullName: u.fullName, email: u.email, role: u.role }); setShowModal(true); }}>
+                      <FaEdit />
+                    </button>
+                    <button className="btn-sm btn-danger" onClick={() => handleDelete(u._id)}>
+                      <FaTrashAlt />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <table className="user-table">
-          <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Actions</th></tr></thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u._id}>
-                <td>{u.fullName}</td>
-                <td>{u.email}</td>
-                <td>
-                  <select value={u.role} onChange={e => changeRole(u._id, e.target.value)}>
-                    <option value="client">Client</option>
-                    <option value="formateur">Formateur</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </td>
-                <td>
-                  <button className="btn-sm btn-warning me-2" onClick={() => { setEditingUser(u); setFormData({ fullName: u.fullName, email: u.email, role: u.role }); setShowModal(true); }}>✏️</button>
-                  <button className="btn-sm btn-danger" onClick={() => handleDelete(u._id)}>🗑️</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      )}
 
-      {/* Cours en attente */}
-      <div className="courses-section glass">
-        <h2>Cours en attente</h2>
-        <div className="pending-grid">
-          {pendingCourses.map(c => (
-            <div key={c._id} className="pending-card">
-              <h4>{c.title}</h4>
-              <p>{c.description?.slice(0, 80)}...</p>
-              <div className="btn-group">
-                <button className="btn-info me-2" onClick={() => { setSelectedCourse(c); setShowCourseModal(true); }}>👁️ Voir détails</button>
-                <button className="btn-success me-2" onClick={() => validateCourse(c._id)}>Valider</button>
-                <button className="btn-danger" onClick={() => { setRejectCourseId(c._id); setShowRejectModal(true); }}>Refuser</button>
+      {/* Onglet Cours en attente */}
+      {activeTab === 'courses' && (
+        <div className="courses-section glass">
+          <h2>Cours en attente</h2>
+          <div className="pending-grid">
+            {pendingCourses.map(c => (
+              <div key={c._id} className="pending-card">
+                <h4>{c.title}</h4>
+                <p>{c.description?.slice(0, 80)}...</p>
+                <div className="btn-group">
+                  <button className="btn-info me-2" onClick={() => { setSelectedCourse(c); setShowCourseModal(true); }}>
+                    <FaEye className="me-1" /> Détails
+                  </button>
+                  <button className="btn-success me-2" onClick={() => validateCourse(c._id)}>
+                    <FaCheck className="me-1" /> Valider
+                  </button>
+                  <button className="btn-danger" onClick={() => { setRejectCourseId(c._id); setShowRejectModal(true); }}>
+                    <FaTimes className="me-1" /> Refuser
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-          {pendingCourses.length === 0 && <p>Aucun cours en attente.</p>}
+            ))}
+            {pendingCourses.length === 0 && <p>Aucun cours en attente.</p>}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Graphique professionnel (maintenant en bas) */}
-      <div className="chart-container glass">
+      {/* SECTION MESSAGES - DESIGN CARTES PROFESSIONNEL */}
+      {activeTab === 'messages' && (
+        <div className="messages-section glass">
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <h2><MdOutlineMarkEmailUnread className="me-2" /> Messages reçus</h2>
+            <button className="btn btn-outline-primary btn-sm rounded-pill" onClick={fetchMessages}>
+              <FaSyncAlt className="me-1" /> Actualiser
+            </button>
+          </div>
+
+          {messages.length === 0 ? (
+            <div className="alert alert-info text-center">Aucun message pour le moment.</div>
+          ) : (
+            <div className="messages-grid">
+              {messages.map((msg) => (
+                <div key={msg._id} className={`message-card ${!msg.isRead ? 'unread' : 'read'}`}>
+                  <div className="message-header">
+                    <div className="message-sender">
+                      <strong>{msg.name}</strong>
+                      <span className="message-email">{msg.email}</span>
+                    </div>
+                    <span className={`message-status ${!msg.isRead ? 'status-unread' : 'status-read'}`}>
+                      {!msg.isRead ? 'Non lu' : 'Lu'}
+                    </span>
+                  </div>
+                  <div className="message-subject">{msg.subject}</div>
+                  <div className="message-preview">
+                    {msg.message.length > 100 ? msg.message.substring(0, 100) + '...' : msg.message}
+                  </div>
+                  <div className="message-footer">
+                    <small className="message-date">
+                      {new Date(msg.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </small>
+                    <div className="message-actions">
+                      <button className="btn-action view" onClick={() => { setSelectedMessage(msg); setShowMessageModal(true); }} title="Voir le message">
+                        <FaEye />
+                      </button>
+                      {!msg.isRead && (
+                        <button className="btn-action read" onClick={() => markAsRead(msg._id)} title="Marquer comme lu">
+                          <FaCheck />
+                        </button>
+                      )}
+                      <button className="btn-action delete" onClick={() => deleteMessage(msg._id)} title="Supprimer">
+                        <FaTrashAlt />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Graphique */}
+      <div className="chart-container glass mt-4">
         <h3>Évolution mensuelle des inscriptions</h3>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <Line data={chartData} options={chartOptions} />
@@ -303,7 +407,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* MODAL : Visualisation détaillée d'un cours */}
+      {/* MODAL : Détails cours */}
       {showCourseModal && selectedCourse && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog modal-lg">
@@ -343,7 +447,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* MODAL : Rejet avec message */}
+      {/* MODAL : Rejet cours */}
       {showRejectModal && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog">
@@ -359,6 +463,40 @@ export default function AdminDashboard() {
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowRejectModal(false)}>Annuler</button>
                 <button className="btn btn-danger" onClick={rejectCourse}>Confirmer le rejet</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL : Détails message */}
+      {showMessageModal && selectedMessage && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header bg-primary text-white">
+                <h5 className="modal-title">Message de {selectedMessage.name}</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowMessageModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3"><strong>De :</strong> {selectedMessage.name} ({selectedMessage.email})</div>
+                <div className="mb-3"><strong>Sujet :</strong> {selectedMessage.subject}</div>
+                <div className="mb-3"><strong>Date :</strong> {new Date(selectedMessage.createdAt).toLocaleString('fr-FR')}</div>
+                <div className="mb-3">
+                  <strong>Message :</strong>
+                  <div className="message-full-content p-3 bg-light rounded mt-2">{selectedMessage.message}</div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                {!selectedMessage.isRead && (
+                  <button className="btn btn-success" onClick={() => { markAsRead(selectedMessage._id); setShowMessageModal(false); }}>
+                    <FaCheck className="me-1" /> Marquer comme lu
+                  </button>
+                )}
+                <button className="btn btn-secondary" onClick={() => setShowMessageModal(false)}>Fermer</button>
+                <button className="btn btn-danger" onClick={() => { deleteMessage(selectedMessage._id); setShowMessageModal(false); }}>
+                  <FaTrashAlt className="me-1" /> Supprimer
+                </button>
               </div>
             </div>
           </div>
