@@ -1,8 +1,12 @@
+// backend/controllers/adminController.js
 const User = require('../models/User');
 const Course = require('../models/Course');
 const Quiz = require('../models/Quiz');
+// Optionnel : pour supprimer les fichiers physiques
+const fs = require('fs');
+const path = require('path');
 
-// ========== GESTION DES UTILISATEURS (existant, à conserver) ==========
+// ========== GESTION DES UTILISATEURS ==========
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password');
@@ -43,16 +47,77 @@ exports.updateUser = async (req, res) => {
   }
 };
 
+// ========== FONCTION DELETEUSER MODIFIÉE ==========
 exports.deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    // 1. Vérifier que l'utilisateur existe
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // 2. Si c'est un formateur, supprimer ses cours, quiz et fichiers
+    if (user.role === 'formateur') {
+      // Récupérer tous les cours du formateur
+      const courses = await Course.find({ formateur: userId });
+
+      // Récupérer tous les IDs des quiz présents dans les sections de ces cours
+      const quizIds = courses.flatMap(course =>
+        course.sections
+          .filter(section => section.quizId)
+          .map(section => section.quizId)
+      );
+
+      // Supprimer les quiz (si des IDs existent)
+      if (quizIds.length > 0) {
+        await Quiz.deleteMany({ _id: { $in: quizIds } });
+      }
+
+      // Supprimer les fichiers physiques (thumbnails, vidéos, PDF)
+      courses.forEach(course => {
+        // Thumbnail
+        if (course.thumbnail) {
+          const thumbPath = path.join(__dirname, '..', course.thumbnail);
+          if (fs.existsSync(thumbPath)) {
+            try {
+              fs.unlinkSync(thumbPath);
+            } catch (e) {
+              console.error(`Erreur suppression thumbnail ${thumbPath}:`, e);
+            }
+          }
+        }
+        // Sections : fichiers vidéo/PDF
+        course.sections.forEach(section => {
+          if (section.contentUrl) {
+            const filePath = path.join(__dirname, '..', section.contentUrl);
+            if (fs.existsSync(filePath)) {
+              try {
+                fs.unlinkSync(filePath);
+              } catch (e) {
+                console.error(`Erreur suppression fichier ${filePath}:`, e);
+              }
+            }
+          }
+        });
+      });
+
+      // Supprimer tous les cours du formateur
+      await Course.deleteMany({ formateur: userId });
+    }
+
+    // 3. Supprimer l'utilisateur
     await User.findByIdAndDelete(userId);
-    res.json({ message: 'Utilisateur supprimé' });
+
+    res.json({ message: 'Utilisateur et tous ses cours/quiz/fichiers supprimés avec succès' });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 };
 
+// ========== AUTRES FONCTIONS (inchangées) ==========
 exports.changeUserRole = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -67,13 +132,13 @@ exports.changeUserRole = async (req, res) => {
   }
 };
 
-// ========== NOUVELLES FONCTIONS POUR LA GESTION DES COURS EN ATTENTE ==========
+// ========== GESTION DES COURS EN ATTENTE ==========
 exports.getPendingCourses = async (req, res) => {
   try {
     const courses = await Course.find({ status: 'pending' })
       .populate('formateur', 'fullName email')
       .sort({ createdAt: -1 });
-    
+
     // Pour chaque cours, on récupère les quizzes associés à chaque section
     const coursesWithQuizzes = await Promise.all(courses.map(async (course) => {
       const courseObj = course.toObject();
@@ -87,7 +152,7 @@ exports.getPendingCourses = async (req, res) => {
       courseObj.sections = sectionsWithQuizzes;
       return courseObj;
     }));
-    
+
     res.json(coursesWithQuizzes);
   } catch (err) {
     res.status(500).json({ message: err.message });
