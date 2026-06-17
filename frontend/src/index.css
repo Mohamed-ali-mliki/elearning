@@ -211,3 +211,115 @@ a:hover {
 .testimonial-carousel .owl-item {
   float: left;
 }
+
+/* ====================================================
+   MODE SOMBRE GLOBAL (classe .dark-mode sur le body)
+   ==================================================== */
+
+body.dark-mode {
+  background-color: #121212 !important;
+  color: #e0e0e0 !important;
+}
+
+body.dark-mode .card,
+body.dark-mode .bg-light,
+body.dark-mode .bg-white,
+body.dark-mode .modal-content,
+body.dark-mode .card-body {
+  background-color: #1e1e2f !important;
+  color: #e0e0e0 !important;
+  border-color: #2a2a4a !important;
+}
+
+body.dark-mode .text-muted {
+  color: #a0aec0 !important;
+}
+
+body.dark-mode .form-control {
+  background-color: #1a1a2e !important;
+  color: #e0e0e0 !important;
+  border-color: #3a3a5a !important;
+}
+
+body.dark-mode .form-control:focus {
+  background-color: #1a1a2e !important;
+  color: #e0e0e0 !important;
+  border-color: #4a6a9e !important;
+  box-shadow: 0 0 0 0.2rem rgba(66, 153, 225, 0.25);
+}
+
+body.dark-mode .form-control::placeholder {
+  color: #6a7a9a !important;
+}
+
+body.dark-mode .input-group-text {
+  background-color: #1a1a2e !important;
+  color: #a0aec0 !important;
+  border-color: #3a3a5a !important;
+}
+
+body.dark-mode .btn-outline-secondary {
+  color: #a0aec0 !important;
+  border-color: #3a3a5a !important;
+}
+body.dark-mode .btn-outline-secondary:hover {
+  background-color: #3a3a5a !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .btn-light {
+  background-color: #2a2a4a !important;
+  color: #e0e0e0 !important;
+  border-color: #2a2a4a !important;
+}
+body.dark-mode .btn-light:hover {
+  background-color: #3a3a5a !important;
+}
+
+body.dark-mode .btn-primary {
+  background-color: #2b6cb0 !important;
+  border-color: #2b6cb0 !important;
+}
+body.dark-mode .btn-primary:hover {
+  background-color: #1a4a7a !important;
+  border-color: #1a4a7a !important;
+}
+
+body.dark-mode .alert-danger {
+  background-color: #2d1b1b !important;
+  color: #f8a5a5 !important;
+  border-color: #5a2a2a !important;
+}
+
+body.dark-mode a:not(.btn):not(.nav-link):not(.dropdown-item) {
+  color: #63b3ed !important;
+}
+body.dark-mode a:not(.btn):not(.nav-link):not(.dropdown-item):hover {
+  color: #90cdf4 !important;
+}
+
+body.dark-mode .form-check-label {
+  color: #e0e0e0 !important;
+}
+
+body.dark-mode .shadow {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .border {
+  border-color: #2a2a4a !important;
+}
+
+/* Scrollbar (optionnel) */
+body.dark-mode ::-webkit-scrollbar {
+  background-color: #1a1a2e;
+}
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background-color: #3a3a5a;
+  border-radius: 4px;
+}
+
+/* Footer en mode sombre (si vous utilisez une classe .footer) */
+body.dark-mode .footer {
+  background-color: #0d0d1a !important;
+}

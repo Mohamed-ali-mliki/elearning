@@ -1,4 +1,3 @@
-// src/pages/Dashboard/DashboardRouter.jsx
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import DashboardLayout from '../../components/Layout/DashboardLayout';

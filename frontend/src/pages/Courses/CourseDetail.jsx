@@ -1,111 +1,131 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { FaUserTie, FaClock, FaBookOpen, FaCheckCircle, FaPlayCircle, FaFilePdf, FaStar } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
+import './CourseList.css';
 
 const CourseDetail = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [inscrit, setInscrit] = useState(false);
+  const [erreur, setErreur] = useState('');
 
   useEffect(() => {
-    const fetchCourse = async () => {
+    const fetchData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`/api/courses/${id}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        if (!res.ok) throw new Error('Cours introuvable');
+        const res = await fetch(`/api/courses/${id}`);
+        if (!res.ok) throw new Error();
         const data = await res.json();
         setCourse(data);
-        
-        if (token && user) {
-          const enrollRes = await fetch(`/api/enrollments/check/${id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (enrollRes.ok) {
-            const { enrolled } = await enrollRes.json();
-            setIsEnrolled(enrolled);
+        if (token) {
+          const check = await fetch(`/api/enrollments/check/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+          if (check.ok) {
+            const { enrolled } = await check.json();
+            setInscrit(enrolled);
           }
         }
       } catch (err) {
-        setError(err.message);
+        setErreur(t('common.error'));
       } finally {
         setLoading(false);
       }
     };
-    fetchCourse();
-  }, [id, user]);
+    fetchData();
+  }, [id, token]);
 
-  const handleEnroll = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Veuillez vous connecter pour vous inscrire');
-      return;
-    }
+  const handleInscription = async () => {
+    if (!token) { alert(t('auth.loginRequired')); return; }
     try {
-      const res = await fetch(`/api/enrollments/${id}/buy`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch(`/api/enrollments/${id}/buy`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
-        setIsEnrolled(true);
-        alert('Inscription réussie !');
+        setInscrit(true);
+        alert(t('courseDetail.enrollSuccess') || 'Inscription réussie ! Bon apprentissage.');
       } else {
-        const data = await res.json();
-        alert(data.message || 'Erreur lors de l\'inscription');
+        const msg = await res.json();
+        alert(msg.message || t('common.error'));
       }
     } catch (err) {
-      console.error(err);
-      alert('Erreur réseau');
+      alert(t('common.error'));
     }
   };
 
-  if (loading) return <div className="text-center mt-5">Chargement...</div>;
-  if (error) return <div className="alert alert-danger m-4">{error}</div>;
+  if (loading) return <div className="text-center mt-5"><div className="spinner-border text-primary"></div></div>;
+  if (erreur) return <div className="alert alert-danger m-4">{erreur}</div>;
+
+  const nbSections = course.sections?.length || 0;
+  const dureeTotale = course.sections?.reduce((acc, s) => acc + (parseInt(s.duration) || 0), 0) || 45;
 
   return (
-    <div className="container my-5">
-      <div className="row">
-        <div className="col-md-8">
-          {/* Image avec le même chemin que Home */}
-          <img 
-            src={course?.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/img/course-1.jpg'} 
-            className="img-fluid rounded-4 shadow mb-4" 
-            alt={course?.title} 
-            style={{ maxHeight: '400px', width: '100%', objectFit: 'cover' }}
-          />
-          <h1 className="mt-2">{course?.title}</h1>
-          <p className="lead">{course?.description}</p>
-          <p><strong>Catégorie :</strong> {course?.category}</p>
-          <p><strong>Formateur :</strong> {course?.formateur?.fullName || 'Instructeur'}</p>
-          <h3>Contenu du cours</h3>
-          <ul className="list-group mb-4">
-            {course?.sections?.map((section, idx) => (
-              <li key={idx} className="list-group-item">
-                {section.title} - {section.type === 'video' ? '🎥 Vidéo' : '📄 PDF'}
-              </li>
-            ))}
-          </ul>
+    <div>
+      <div className="course-hero" style={{ backgroundImage: `url(${course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/img/course-1.jpg'})` }}>
+        <div className="overlay-dark"></div>
+        <div className="container h-100 d-flex align-items-center">
+          <div className="text-white">
+            <h1 className="display-5 fw-bold">{course.title}</h1>
+            <p className="lead">{course.description}</p>
+            <div className="d-flex gap-3">
+              <span><FaUserTie /> {course.formateur?.fullName || 'Formateur'}</span>
+              <span><FaClock /> {dureeTotale} min</span>
+              <span><FaBookOpen /> {nbSections} {t('courseDetail.sections')}</span>
+            </div>
+          </div>
         </div>
-        <div className="col-md-4">
-          <div className="card shadow-lg border-0 rounded-4 sticky-top" style={{ top: '20px' }}>
-            <div className="card-body text-center p-4">
-              <h2 className="text-primary mb-3">{course?.price} DT</h2>
-              <hr />
-              <ul className="list-unstyled text-start mb-4">
-                <li><i className="bi bi-check-circle-fill text-success me-2"></i> Accès à vie</li>
-                <li><i className="bi bi-check-circle-fill text-success me-2"></i> Certificat de complétion</li>
-                <li><i className="bi bi-check-circle-fill text-success me-2"></i> Support 24/7</li>
-              </ul>
-              {isEnrolled ? (
-                <Link to={`/watch/${course?._id}`} className="btn btn-success btn-lg w-100 rounded-pill">Accéder au cours</Link>
-              ) : (
-                <button onClick={handleEnroll} className="btn btn-primary btn-lg w-100 rounded-pill">S'inscrire maintenant</button>
-              )}
-              <small className="text-muted d-block mt-3">Satisfait ou remboursé sous 30 jours</small>
+      </div>
+
+      <div className="container my-5">
+        <div className="row">
+          <div className="col-lg-8">
+            <div className="card shadow-sm mb-4 border-0">
+              <div className="card-body">
+                <h3>{t('courseDetail.overview')}</h3>
+                <ul className="list-group list-group-flush">
+                  {course.sections?.map((sec, idx) => (
+                    <li key={idx} className="list-group-item d-flex justify-content-between align-items-center">
+                      <span>
+                        {sec.type === 'video' ? <FaPlayCircle className="text-primary me-2" /> : <FaFilePdf className="text-danger me-2" />}
+                        {sec.title}
+                      </span>
+                      <span className="badge bg-secondary">{sec.duration || 'N/A'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="card shadow-sm border-0">
+              <div className="card-body">
+                <h3>{t('courseDetail.reviews')}</h3>
+                <div className="d-flex align-items-center mb-2">
+                  <div className="text-warning me-2">★★★★☆</div>
+                  <span>4.5/5 (18 {t('home.reviews')})</span>
+                </div>
+                <p><FaStar className="text-warning" /> {t('courseDetail.review1')}</p>
+                <p><FaStar className="text-warning" /> {t('courseDetail.review2')}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-lg-4">
+            <div className="card shadow-lg border-0 rounded-4 sticky-top" style={{ top: '20px' }}>
+              <div className="card-body text-center p-4">
+                <h2 className="text-primary mb-3">{course.price} DT</h2>
+                <hr />
+                <ul className="list-unstyled text-start mb-4">
+                  <li><FaCheckCircle className="text-success me-2" />{t('courseDetail.lifetimeAccess')}</li>
+                  <li><FaCheckCircle className="text-success me-2" />{t('courseDetail.certificate')}</li>
+                  <li><FaCheckCircle className="text-success me-2" />{t('courseDetail.emailSupport')}</li>
+                </ul>
+                {inscrit ? (
+                  <Link to={`/watch/${course._id}`} className="btn btn-success btn-lg w-100 rounded-pill">{t('courseDetail.continue')}</Link>
+                ) : (
+                  <button onClick={handleInscription} className="btn btn-primary btn-lg w-100 rounded-pill">{t('courseDetail.enrollNow')}</button>
+                )}
+                <small className="text-muted d-block mt-3">{t('courseDetail.guarantee')}</small>
+              </div>
             </div>
           </div>
         </div>

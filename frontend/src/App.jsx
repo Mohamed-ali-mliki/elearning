@@ -12,10 +12,12 @@ import LoginPage from './pages/Login/LoginPage';
 import SignupPage from './pages/Signup/SignupPage';
 import { DashboardRouter } from './pages/Dashboard/DashboardRouter';
 
-// Composant wrapper pour conditionner le Footer
-const AppContent = () => {
+function App() {
+  const { loading } = useAuth();
   const location = useLocation();
   const hideFooter = location.pathname.startsWith('/dashboard');
+
+  if (loading) return <div className="text-center mt-5">Chargement...</div>;
 
   return (
     <>
@@ -35,13 +37,6 @@ const AppContent = () => {
       {!hideFooter && <Footer />}
     </>
   );
-};
-
-function App() {
-  const { user, loading } = useAuth();
-  if (loading) return <div>Chargement...</div>;
-
-  return <AppContent />;
 }
 
 export default App;

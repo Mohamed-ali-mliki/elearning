@@ -5,13 +5,14 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './AdminDashboard.css';
-// Import des icônes professionnelles
 import { FaUsers, FaBookOpen, FaMoneyBillWave, FaUserPlus, FaEdit, FaTrashAlt, FaEye, FaCheck, FaSyncAlt, FaEnvelope, FaTimes } from 'react-icons/fa';
 import { MdOutlineMarkEmailUnread } from 'react-icons/md';
+import { useTranslation } from 'react-i18next';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const { token: contextToken } = useAuth();
   const token = contextToken || localStorage.getItem('token');
   const [users, setUsers] = useState([]);
@@ -75,20 +76,20 @@ export default function AdminDashboard() {
     try {
       await axios.put(`/api/admin/messages/${id}/read`, {}, { headers: { Authorization: `Bearer ${token}` } });
       fetchMessages();
-      showNotification('Message marqué comme lu');
+      showNotification(t('dashboard.admin.messageRead'));
     } catch (err) {
-      showNotification('Erreur', true);
+      showNotification(t('common.error'), true);
     }
   };
 
   const deleteMessage = async (id) => {
-    if (!window.confirm('Supprimer ce message définitivement ?')) return;
+    if (!window.confirm(t('common.deleteConfirm'))) return;
     try {
       await axios.delete(`/api/admin/messages/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchMessages();
-      showNotification('Message supprimé');
+      showNotification(t('dashboard.admin.messageDeleted'));
     } catch (err) {
-      showNotification('Erreur suppression', true);
+      showNotification(t('common.error'), true);
     }
   };
 
@@ -101,7 +102,6 @@ export default function AdminDashboard() {
     }, 4000);
   };
 
-  // Gestion utilisateurs
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -111,45 +111,44 @@ export default function AdminDashboard() {
         ? { fullName: formData.fullName, email: formData.email, role: formData.role }
         : { fullName: formData.fullName, email: formData.email, password: formData.password, role: formData.role };
       await axios[method](url, body, { headers: { Authorization: `Bearer ${token}` } });
-      showNotification(editingUser ? 'Utilisateur modifié' : 'Utilisateur ajouté');
+      showNotification(editingUser ? t('dashboard.admin.userUpdated') : t('dashboard.admin.userAdded'));
       fetchData();
       setShowModal(false);
       setEditingUser(null);
       setFormData({ fullName: '', email: '', password: '', role: 'client' });
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Erreur', true);
+      showNotification(err.response?.data?.message || t('common.error'), true);
     }
   };
 
   const handleDelete = async (userId) => {
-    if (!window.confirm('Supprimer cet utilisateur ?')) return;
+    if (!window.confirm(t('common.deleteConfirm'))) return;
     try {
       await axios.delete(`/api/admin/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
-      showNotification('Utilisateur supprimé');
+      showNotification(t('dashboard.admin.userDeleted'));
       fetchData();
     } catch (err) {
-      showNotification('Erreur suppression', true);
+      showNotification(t('common.error'), true);
     }
   };
 
   const changeRole = async (userId, newRole) => {
     try {
       await axios.put(`/api/admin/users/${userId}/role`, { role: newRole }, { headers: { Authorization: `Bearer ${token}` } });
-      showNotification('Rôle mis à jour');
+      showNotification(t('dashboard.admin.roleUpdated'));
       fetchData();
     } catch (err) {
-      showNotification('Erreur mise à jour rôle', true);
+      showNotification(t('common.error'), true);
     }
   };
 
-  // Gestion cours
   const validateCourse = async (courseId) => {
     try {
       await axios.put(`/api/admin/courses/${courseId}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } });
-      showNotification('Cours approuvé avec succès');
+      showNotification(t('dashboard.admin.courseApproved'));
       fetchData();
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Erreur lors de l\'approbation', true);
+      showNotification(err.response?.data?.message || t('common.error'), true);
     }
   };
 
@@ -157,17 +156,16 @@ export default function AdminDashboard() {
     if (!rejectCourseId) return;
     try {
       await axios.put(`/api/admin/courses/${rejectCourseId}/reject`, { message: rejectMessage }, { headers: { Authorization: `Bearer ${token}` } });
-      showNotification('Cours rejeté');
+      showNotification(t('dashboard.admin.courseRejected'));
       setShowRejectModal(false);
       setRejectCourseId(null);
       setRejectMessage('');
       fetchData();
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Erreur lors du rejet', true);
+      showNotification(err.response?.data?.message || t('common.error'), true);
     }
   };
 
-  // Graphique
   const getLast6MonthsChartData = () => {
     const months = [];
     const now = new Date();
@@ -190,7 +188,7 @@ export default function AdminDashboard() {
   const chartData = {
     labels: labels,
     datasets: [{
-      label: 'Nouveaux utilisateurs',
+      label: t('dashboard.admin.chartLabel'),
       data: data,
       fill: true,
       backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -209,58 +207,56 @@ export default function AdminDashboard() {
     maintainAspectRatio: true,
     plugins: {
       legend: { position: 'top', labels: { font: { size: 13, weight: 'bold' }, color: '#1e293b' } },
-      tooltip: { backgroundColor: '#1e293b', titleColor: '#fff', bodyColor: '#e2e8f0', callbacks: { label: (context) => `${context.dataset.label}: ${context.raw} inscription(s)` } }
+      tooltip: { backgroundColor: '#1e293b', titleColor: '#fff', bodyColor: '#e2e8f0', callbacks: { label: (context) => `${context.dataset.label}: ${context.raw} ${t('dashboard.admin.enrollments')}` } }
     },
     scales: {
-      y: { beginAtZero: true, grid: { color: '#e2e8f0' }, title: { display: true, text: 'Nombre d\'inscriptions', color: '#475569' } },
-      x: { grid: { display: false }, title: { display: true, text: 'Mois', color: '#475569' } }
+      y: { beginAtZero: true, grid: { color: '#e2e8f0' }, title: { display: true, text: t('dashboard.admin.enrollments'), color: '#475569' } },
+      x: { grid: { display: false }, title: { display: true, text: t('dashboard.admin.month'), color: '#475569' } }
     },
     animation: { duration: 1000, easing: 'easeOutQuart' }
   };
 
   return (
     <div className="admin-dashboard">
-      <h1 className="dashboard-title">Tableau de bord Admin</h1>
+      <h1 className="dashboard-title">{t('dashboard.admin.title')}</h1>
       
       {error && <div className="alert alert-danger">{error}<button type="button" className="btn-close" onClick={() => setError('')}></button></div>}
       {success && <div className="alert alert-success">{success}<button type="button" className="btn-close" onClick={() => setSuccess('')}></button></div>}
 
       <div className="stats-row">
-        <div className="stat-card glass"><FaUsers className="me-2" /> {stats.totalUsers} Utilisateurs</div>
-        <div className="stat-card glass"><FaBookOpen className="me-2" /> {stats.totalCourses} Cours en attente</div>
-        <div className="stat-card glass"><FaMoneyBillWave className="me-2" /> {stats.totalRevenue} DT Revenus</div>
+        <div className="stat-card glass"><FaUsers className="me-2" /> {stats.totalUsers} {t('dashboard.statsUsers')}</div>
+        <div className="stat-card glass"><FaBookOpen className="me-2" /> {stats.totalCourses} {t('dashboard.admin.pendingCourses')}</div>
+        <div className="stat-card glass"><FaMoneyBillWave className="me-2" /> {stats.totalRevenue} DT {t('dashboard.admin.revenue')}</div>
       </div>
 
-      {/* Onglets */}
       <ul className="nav nav-tabs mb-4">
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
-            <FaUsers className="me-1" /> Utilisateurs
+            <FaUsers className="me-1" /> {t('dashboard.admin.usersTab')}
           </button>
         </li>
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'courses' ? 'active' : ''}`} onClick={() => setActiveTab('courses')}>
-            <FaBookOpen className="me-1" /> Cours en attente
+            <FaBookOpen className="me-1" /> {t('dashboard.admin.pendingTab')}
           </button>
         </li>
         <li className="nav-item">
           <button className={`nav-link ${activeTab === 'messages' ? 'active' : ''}`} onClick={() => setActiveTab('messages')}>
-            <FaEnvelope className="me-1" /> Messages <span className="badge bg-danger ms-1">{messages.filter(m => !m.isRead).length}</span>
+            <FaEnvelope className="me-1" /> {t('dashboard.admin.messagesTab')} <span className="badge bg-danger ms-1">{messages.filter(m => !m.isRead).length}</span>
           </button>
         </li>
       </ul>
 
-      {/* Onglet Utilisateurs */}
       {activeTab === 'users' && (
         <div className="users-section glass">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h2>Gestion des utilisateurs</h2>
+            <h2>{t('dashboard.admin.manageUsers')}</h2>
             <button className="btn btn-primary" onClick={() => { setEditingUser(null); setFormData({ fullName: '', email: '', password: '', role: 'client' }); setShowModal(true); }}>
-              <FaUserPlus className="me-1" /> Ajouter
+              <FaUserPlus className="me-1" /> {t('dashboard.admin.addUser')}
             </button>
           </div>
           <table className="user-table">
-            <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Actions</th></tr></thead>
+            <thead><tr><th>{t('auth.fullName')}</th><th>{t('auth.email')}</th><th>{t('dashboard.admin.role')}</th><th>{t('dashboard.admin.actions')}</th></tr></thead>
             <tbody>
               {users.map(u => (
                 <tr key={u._id}>
@@ -268,9 +264,9 @@ export default function AdminDashboard() {
                   <td>{u.email}</td>
                   <td>
                     <select value={u.role} onChange={e => changeRole(u._id, e.target.value)}>
-                      <option value="client">Client</option>
-                      <option value="formateur">Formateur</option>
-                      <option value="admin">Admin</option>
+                      <option value="client">{t('auth.roleClient')}</option>
+                      <option value="formateur">{t('auth.roleFormateur')}</option>
+                      <option value="admin">{t('dashboard.admin.admin')}</option>
                     </select>
                   </td>
                   <td>
@@ -288,10 +284,9 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Onglet Cours en attente */}
       {activeTab === 'courses' && (
         <div className="courses-section glass">
-          <h2>Cours en attente</h2>
+          <h2>{t('dashboard.admin.pendingCourses')}</h2>
           <div className="pending-grid">
             {pendingCourses.map(c => (
               <div key={c._id} className="pending-card">
@@ -299,34 +294,33 @@ export default function AdminDashboard() {
                 <p>{c.description?.slice(0, 80)}...</p>
                 <div className="btn-group">
                   <button className="btn-info me-2" onClick={() => { setSelectedCourse(c); setShowCourseModal(true); }}>
-                    <FaEye className="me-1" /> Détails
+                    <FaEye className="me-1" /> {t('dashboard.admin.view')}
                   </button>
                   <button className="btn-success me-2" onClick={() => validateCourse(c._id)}>
-                    <FaCheck className="me-1" /> Valider
+                    <FaCheck className="me-1" /> {t('dashboard.admin.accept')}
                   </button>
                   <button className="btn-danger" onClick={() => { setRejectCourseId(c._id); setShowRejectModal(true); }}>
-                    <FaTimes className="me-1" /> Refuser
+                    <FaTimes className="me-1" /> {t('dashboard.admin.reject')}
                   </button>
                 </div>
               </div>
             ))}
-            {pendingCourses.length === 0 && <p>Aucun cours en attente.</p>}
+            {pendingCourses.length === 0 && <p>{t('dashboard.admin.noPending')}</p>}
           </div>
         </div>
       )}
 
-      {/* SECTION MESSAGES - DESIGN CARTES PROFESSIONNEL */}
       {activeTab === 'messages' && (
         <div className="messages-section glass">
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h2><MdOutlineMarkEmailUnread className="me-2" /> Messages reçus</h2>
+            <h2><MdOutlineMarkEmailUnread className="me-2" /> {t('dashboard.admin.messages')}</h2>
             <button className="btn btn-outline-primary btn-sm rounded-pill" onClick={fetchMessages}>
-              <FaSyncAlt className="me-1" /> Actualiser
+              <FaSyncAlt className="me-1" /> {t('common.refresh')}
             </button>
           </div>
 
           {messages.length === 0 ? (
-            <div className="alert alert-info text-center">Aucun message pour le moment.</div>
+            <div className="alert alert-info text-center">{t('dashboard.admin.noMessages')}</div>
           ) : (
             <div className="messages-grid">
               {messages.map((msg) => (
@@ -337,7 +331,7 @@ export default function AdminDashboard() {
                       <span className="message-email">{msg.email}</span>
                     </div>
                     <span className={`message-status ${!msg.isRead ? 'status-unread' : 'status-read'}`}>
-                      {!msg.isRead ? 'Non lu' : 'Lu'}
+                      {!msg.isRead ? t('dashboard.admin.unread') : t('dashboard.admin.read')}
                     </span>
                   </div>
                   <div className="message-subject">{msg.subject}</div>
@@ -349,15 +343,15 @@ export default function AdminDashboard() {
                       {new Date(msg.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </small>
                     <div className="message-actions">
-                      <button className="btn-action view" onClick={() => { setSelectedMessage(msg); setShowMessageModal(true); }} title="Voir le message">
+                      <button className="btn-action view" onClick={() => { setSelectedMessage(msg); setShowMessageModal(true); }} title={t('common.view')}>
                         <FaEye />
                       </button>
                       {!msg.isRead && (
-                        <button className="btn-action read" onClick={() => markAsRead(msg._id)} title="Marquer comme lu">
+                        <button className="btn-action read" onClick={() => markAsRead(msg._id)} title={t('dashboard.admin.markRead')}>
                           <FaCheck />
                         </button>
                       )}
-                      <button className="btn-action delete" onClick={() => deleteMessage(msg._id)} title="Supprimer">
+                      <button className="btn-action delete" onClick={() => deleteMessage(msg._id)} title={t('common.delete')}>
                         <FaTrashAlt />
                       </button>
                     </div>
@@ -369,37 +363,35 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Graphique */}
       <div className="chart-container glass mt-4">
-        <h3>Évolution mensuelle des inscriptions</h3>
+        <h3>{t('dashboard.admin.graphTitle')}</h3>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <Line data={chartData} options={chartOptions} />
         </div>
       </div>
 
-      {/* MODAL : Ajouter/Modifier utilisateur */}
       {showModal && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5>{editingUser ? 'Modifier' : 'Ajouter'} un utilisateur</h5>
+                <h5>{editingUser ? t('common.edit') : t('common.add')} {t('dashboard.admin.user')}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
               </div>
               <form onSubmit={handleSubmit}>
                 <div className="modal-body">
-                  <input type="text" className="form-control mb-2" placeholder="Nom complet" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} required />
-                  <input type="email" className="form-control mb-2" placeholder="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
-                  {!editingUser && <input type="password" className="form-control mb-2" placeholder="Mot de passe" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />}
+                  <input type="text" className="form-control mb-2" placeholder={t('auth.fullName')} value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} required />
+                  <input type="email" className="form-control mb-2" placeholder={t('auth.email')} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
+                  {!editingUser && <input type="password" className="form-control mb-2" placeholder={t('auth.password')} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />}
                   <select className="form-select" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                    <option value="client">Client</option>
-                    <option value="formateur">Formateur</option>
-                    <option value="admin">Admin</option>
+                    <option value="client">{t('auth.roleClient')}</option>
+                    <option value="formateur">{t('auth.roleFormateur')}</option>
+                    <option value="admin">{t('dashboard.admin.admin')}</option>
                   </select>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Annuler</button>
-                  <button type="submit" className="btn btn-primary">Enregistrer</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>{t('common.cancel')}</button>
+                  <button type="submit" className="btn btn-primary">{t('common.save')}</button>
                 </div>
               </form>
             </div>
@@ -407,32 +399,31 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* MODAL : Détails cours */}
       {showCourseModal && selectedCourse && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5>Détails du cours : {selectedCourse.title}</h5>
+                <h5>{t('dashboard.admin.courseDetails')} : {selectedCourse.title}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowCourseModal(false)}></button>
               </div>
               <div className="modal-body">
-                <p><strong>Formateur :</strong> {selectedCourse.formateur?.fullName} ({selectedCourse.formateur?.email})</p>
-                <p><strong>Description :</strong> {selectedCourse.description}</p>
-                <p><strong>Catégorie :</strong> {selectedCourse.category}</p>
-                <p><strong>Prix :</strong> {selectedCourse.price} €</p>
+                <p><strong>{t('dashboard.admin.instructor')} :</strong> {selectedCourse.formateur?.fullName} ({selectedCourse.formateur?.email})</p>
+                <p><strong>{t('courseDetail.overview')} :</strong> {selectedCourse.description}</p>
+                <p><strong>{t('courses.category')} :</strong> {selectedCourse.category}</p>
+                <p><strong>{t('courseDetail.price')} :</strong> {selectedCourse.price} €</p>
                 <hr />
-                <h6>Sections :</h6>
+                <h6>{t('courseDetail.sections')} :</h6>
                 {selectedCourse.sections?.map((section, idx) => (
                   <div key={idx} className="card mb-2">
                     <div className="card-body">
                       <strong>{section.title}</strong> – {section.type === 'video' ? '🎥 Vidéo' : '📄 PDF'}
                       {section.quiz && (
                         <div className="mt-2">
-                          <span className="badge bg-secondary">Quiz</span>
-                          <p className="mt-1"><strong>Question :</strong> {section.quiz.question}</p>
-                          <p><strong>Type :</strong> {section.quiz.type === 'mcq' ? 'QCM' : 'Réponse libre'}</p>
-                          {section.quiz.options && <p><strong>Options :</strong> {section.quiz.options.join(', ')}</p>}
+                          <span className="badge bg-secondary">{t('watch.quizTitle')}</span>
+                          <p className="mt-1"><strong>{t('dashboard.admin.question')} :</strong> {section.quiz.question}</p>
+                          <p><strong>{t('dashboard.admin.type')} :</strong> {section.quiz.type === 'mcq' ? 'QCM' : 'Réponse libre'}</p>
+                          {section.quiz.options && <p><strong>{t('dashboard.admin.options')} :</strong> {section.quiz.options.join(', ')}</p>}
                         </div>
                       )}
                     </div>
@@ -440,62 +431,60 @@ export default function AdminDashboard() {
                 ))}
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowCourseModal(false)}>Fermer</button>
+                <button className="btn btn-secondary" onClick={() => setShowCourseModal(false)}>{t('common.close')}</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL : Rejet cours */}
       {showRejectModal && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5>Rejeter le cours</h5>
+                <h5>{t('dashboard.admin.reject')} {t('dashboard.admin.course')}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowRejectModal(false)}></button>
               </div>
               <div className="modal-body">
-                <label className="form-label">Message de rejet (optionnel)</label>
-                <textarea className="form-control" rows="3" value={rejectMessage} onChange={e => setRejectMessage(e.target.value)} placeholder="Expliquez au formateur pourquoi son cours est rejeté..."></textarea>
+                <label className="form-label">{t('dashboard.admin.rejectionMsg')}</label>
+                <textarea className="form-control" rows="3" value={rejectMessage} onChange={e => setRejectMessage(e.target.value)} placeholder={t('dashboard.admin.rejectionPlaceholder')}></textarea>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowRejectModal(false)}>Annuler</button>
-                <button className="btn btn-danger" onClick={rejectCourse}>Confirmer le rejet</button>
+                <button className="btn btn-secondary" onClick={() => setShowRejectModal(false)}>{t('common.cancel')}</button>
+                <button className="btn btn-danger" onClick={rejectCourse}>{t('dashboard.admin.confirmReject')}</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL : Détails message */}
       {showMessageModal && selectedMessage && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header bg-primary text-white">
-                <h5 className="modal-title">Message de {selectedMessage.name}</h5>
+                <h5 className="modal-title">{t('dashboard.admin.messageFrom')} {selectedMessage.name}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowMessageModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="mb-3"><strong>De :</strong> {selectedMessage.name} ({selectedMessage.email})</div>
-                <div className="mb-3"><strong>Sujet :</strong> {selectedMessage.subject}</div>
-                <div className="mb-3"><strong>Date :</strong> {new Date(selectedMessage.createdAt).toLocaleString('fr-FR')}</div>
+                <div className="mb-3"><strong>{t('contact.name')} :</strong> {selectedMessage.name} ({selectedMessage.email})</div>
+                <div className="mb-3"><strong>{t('contact.subject')} :</strong> {selectedMessage.subject}</div>
+                <div className="mb-3"><strong>{t('common.date')} :</strong> {new Date(selectedMessage.createdAt).toLocaleString('fr-FR')}</div>
                 <div className="mb-3">
-                  <strong>Message :</strong>
+                  <strong>{t('contact.message')} :</strong>
                   <div className="message-full-content p-3 bg-light rounded mt-2">{selectedMessage.message}</div>
                 </div>
               </div>
               <div className="modal-footer">
                 {!selectedMessage.isRead && (
                   <button className="btn btn-success" onClick={() => { markAsRead(selectedMessage._id); setShowMessageModal(false); }}>
-                    <FaCheck className="me-1" /> Marquer comme lu
+                    <FaCheck className="me-1" /> {t('dashboard.admin.markRead')}
                   </button>
                 )}
-                <button className="btn btn-secondary" onClick={() => setShowMessageModal(false)}>Fermer</button>
+                <button className="btn btn-secondary" onClick={() => setShowMessageModal(false)}>{t('common.close')}</button>
                 <button className="btn btn-danger" onClick={() => { deleteMessage(selectedMessage._id); setShowMessageModal(false); }}>
-                  <FaTrashAlt className="me-1" /> Supprimer
+                  <FaTrashAlt className="me-1" /> {t('common.delete')}
                 </button>
               </div>
             </div>

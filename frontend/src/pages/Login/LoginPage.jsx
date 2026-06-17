@@ -6,8 +6,10 @@ import { HiEye, HiEyeOff } from 'react-icons/hi';
 import { useAuth } from '../../contexts/AuthContext';
 import { getPendingEnrollment, clearPendingEnrollment } from '../../utils/enrollmentUtils';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 
 const LoginPage = () => {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
@@ -19,7 +21,6 @@ const LoginPage = () => {
       setError('');
       const user = await login(data.email, data.password);
       
-      // Vérifier s'il y a une inscription en attente
       const pendingCourseId = getPendingEnrollment();
       if (pendingCourseId) {
         try {
@@ -27,7 +28,6 @@ const LoginPage = () => {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           });
           clearPendingEnrollment();
-          // Rediriger vers le cours ou dashboard client
           if (user.role === 'admin') navigate('/dashboard/admin');
           else if (user.role === 'formateur') navigate('/dashboard/formateur');
           else navigate(`/course/${pendingCourseId}`);
@@ -37,7 +37,6 @@ const LoginPage = () => {
         }
       }
       
-      // Redirection normale selon rôle
       if (user.role === 'admin') navigate('/dashboard/admin');
       else if (user.role === 'formateur') navigate('/dashboard/formateur');
       else navigate('/dashboard/client');
@@ -54,32 +53,32 @@ const LoginPage = () => {
     <div className="container d-flex align-items-center justify-content-center py-5">
       <div className="card shadow-lg border-0 rounded-4 p-4 p-md-5" style={{ maxWidth: '500px', width: '100%' }}>
         <div className="text-center mb-4">
-          <h2 className="fw-bold">Bienvenue !</h2>
-          <p className="text-muted">Connectez-vous pour accéder à vos cours</p>
+          <h2 className="fw-bold">{t('auth.loginTitle')}</h2>
+          <p className="text-muted">{t('auth.loginSubtitle')}</p>
         </div>
 
         {error && <div className="alert alert-danger">{error}</div>}
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="mb-3">
-            <label className="form-label fw-semibold">Adresse email</label>
+            <label className="form-label fw-semibold">{t('auth.email')}</label>
             <input
               type="email"
               className={`form-control ${errors.email ? 'is-invalid' : ''}`}
               placeholder="exemple@domaine.com"
-              {...register('email', { required: "L'email est requis", pattern: { value: /^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/i, message: 'Email invalide' } })}
+              {...register('email', { required: t('auth.emailRequired'), pattern: { value: /^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/i, message: t('auth.emailInvalid') } })}
             />
             {errors.email && <div className="invalid-feedback">{errors.email.message}</div>}
           </div>
 
           <div className="mb-3">
-            <label className="form-label fw-semibold">Mot de passe</label>
+            <label className="form-label fw-semibold">{t('auth.password')}</label>
             <div className="input-group">
               <input
                 type={showPassword ? 'text' : 'password'}
                 className={`form-control ${errors.password ? 'is-invalid' : ''}`}
                 placeholder="••••••••"
-                {...register('password', { required: 'Le mot de passe est requis', minLength: { value: 6, message: 'Au moins 6 caractères' } })}
+                {...register('password', { required: t('auth.passwordRequired'), minLength: { value: 6, message: t('auth.passwordMin') } })}
               />
               <button className="btn btn-outline-secondary" type="button" onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? <HiEyeOff size={20} /> : <HiEye size={20} />}
@@ -91,14 +90,14 @@ const LoginPage = () => {
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div className="form-check">
               <input className="form-check-input" type="checkbox" id="remember" {...register('remember')} />
-              <label className="form-check-label" htmlFor="remember">Se souvenir de moi</label>
+              <label className="form-check-label" htmlFor="remember">{t('auth.remember')}</label>
             </div>
-            <Link to="/forgot-password" className="text-decoration-none small">Mot de passe oublié ?</Link>
+            <Link to="/forgot-password" className="text-decoration-none small">{t('auth.forgotPassword')}</Link>
           </div>
 
-          <button type="submit" className="btn btn-primary w-100 py-2 fw-semibold rounded-pill">Se connecter</button>
+          <button type="submit" className="btn btn-primary w-100 py-2 fw-semibold rounded-pill">{t('auth.loginBtn')}</button>
 
-          <div className="text-center my-3">ou</div>
+          <div className="text-center my-3">{t('auth.or')}</div>
 
           <div className="d-flex gap-2">
             <button type="button" className="btn btn-outline-secondary w-50 d-flex align-items-center justify-content-center gap-2 rounded-pill" onClick={() => handleSocialLogin('Google')}>
@@ -111,7 +110,7 @@ const LoginPage = () => {
         </form>
 
         <p className="text-center mt-4 mb-0">
-          Pas encore de compte ? <Link to="/signup" className="text-decoration-none fw-bold">Inscrivez-vous</Link>
+          {t('auth.noAccount')} <Link to="/signup" className="text-decoration-none fw-bold">{t('auth.signupBtn')}</Link>
         </p>
       </div>
     </div>

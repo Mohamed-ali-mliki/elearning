@@ -1,141 +1,144 @@
-// frontend/src/pages/Courses/WatchCourse.jsx
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import QuizPlayer from '../../components/QuizPlayer';
+import { FaCheckCircle, FaPlayCircle, FaFilePdf } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
+import './CourseList.css';
 
 const WatchCourse = () => {
+  const { t } = useTranslation();
   const { courseId } = useParams();
-  const { user, token } = useAuth(); // suppose que AuthContext expose token
+  const { token } = useAuth();
   const [course, setCourse] = useState(null);
   const [sections, setSections] = useState([]);
-  const [currentSection, setCurrentSection] = useState(null);
-  const [error, setError] = useState('');
-  const [enrollment, setEnrollment] = useState(null); // pour suivre la progression
+  const [sectionActuelle, setSectionActuelle] = useState(null);
+  const [progression, setProgression] = useState({});
+  const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
     const fetchCourse = async () => {
-      const res = await fetch(`/api/courses/${courseId}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setCourse(data);
-        setSections(data.sections);
-        if (data.sections.length) setCurrentSection(data.sections[0]);
-      } else setError('Cours introuvable');
+      try {
+        const res = await fetch(`/api/courses/${courseId}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          setCourse(data);
+          setSections(data.sections);
+          if (data.sections.length) setSectionActuelle(data.sections[0]);
+        } else {
+          alert(t('common.error'));
+        }
+      } catch (err) {
+        console.error(err);
+      }
     };
     const fetchEnrollment = async () => {
-      const res = await fetch(`/api/enrollments/check/${courseId}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.enrolled) {
-          const enrollRes = await fetch(`/api/enrollments/client/enrollments`, { headers: { Authorization: `Bearer ${token}` } });
-          if (enrollRes.ok) {
-            const enrollments = await enrollRes.json();
-            const found = enrollments.find(c => c._id === courseId);
-            if (found) setEnrollment(found);
+      try {
+        const res = await fetch(`/api/enrollments/client/enrollments`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const list = await res.json();
+          const found = list.find(c => c._id === courseId);
+          if (found && found.sectionProgress) {
+            const progMap = {};
+            found.sectionProgress.forEach(sp => { progMap[sp.sectionId] = sp.completed; });
+            setProgression(progMap);
           }
         }
+      } catch (err) {
+        console.error(err);
       }
+      setChargement(false);
     };
     fetchCourse();
     fetchEnrollment();
   }, [courseId, token]);
 
-  const markCompleted = async (sectionId) => {
-    // Vérifier d'abord si le quiz est réussi si nécessaire
-    const section = course.sections.find(s => s._id === sectionId);
+  const marquerTermine = async (sectionId) => {
+    const section = sections.find(s => s._id === sectionId);
     if (section?.quizId && section.quizRequired) {
-      // On pourrait vérifier le score via un appel, mais le backend le fera
-      // Laisser le backend refuser si le quiz n'est pas réussi
-    }
-    const res = await fetch(`/api/enrollments/${courseId}/progress`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ sectionId, completed: true })
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      alert(err.message || 'Impossible de valider la section');
+      alert(t('watch.quizRequiredMsg'));
       return;
     }
-    // Recharger l'enrollment
-    const enrollRes = await fetch(`/api/enrollments/client/enrollments`, { headers: { Authorization: `Bearer ${token}` } });
-    if (enrollRes.ok) {
-      const enrollments = await enrollRes.json();
-      const found = enrollments.find(c => c._id === courseId);
-      setEnrollment(found);
+    try {
+      const res = await fetch(`/api/enrollments/${courseId}/progress`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sectionId, completed: true })
+      });
+      if (res.ok) {
+        setProgression(prev => ({ ...prev, [sectionId]: true }));
+        const idx = sections.findIndex(s => s._id === sectionId);
+        if (idx + 1 < sections.length) setSectionActuelle(sections[idx+1]);
+      } else {
+        const err = await res.json();
+        alert(err.message || t('common.error'));
+      }
+    } catch (err) {
+      alert(t('common.error'));
     }
-    // Mettre à jour localement l'état des sections
-    setSections(sections.map(s => s._id === sectionId ? { ...s, completed: true } : s));
   };
 
-  const onQuizComplete = () => {
-    // Optionnel : recharger l'enrollment pour mettre à jour les scores
-    // L'utilisateur pourra alors cliquer sur "Marquer comme terminé" si la section n'est pas auto-complétée
-    alert('Quiz réussi ! Vous pouvez maintenant valider la section.');
+  const onQuizReussi = (sectionId) => {
+    alert(t('watch.scoreSuccess'));
   };
 
-  if (error) return <div className="alert alert-danger">{error}</div>;
-  if (!course) return <div>Chargement...</div>;
+  if (chargement) return <div className="text-center mt-5">{t('common.loading')}</div>;
+  if (!course) return <div className="alert alert-danger">{t('common.error')}</div>;
 
-  const currentSectionData = currentSection;
-  const isCompleted = enrollment?.sectionProgress?.find(sp => sp.sectionId === currentSectionData?._id)?.completed;
+  const section = sectionActuelle;
+  const estComplete = progression[section?._id];
 
   return (
     <div className="container my-4">
       <div className="row">
         <div className="col-md-8">
-          {currentSectionData && (
+          {section && (
             <>
-              <h2>{currentSectionData.title}</h2>
-              {currentSectionData.type === 'video' ? (
+              <h2>{section.title}</h2>
+              {section.type === 'video' ? (
                 <video
-                  src={`http://localhost:5000/${currentSectionData.contentUrl}`}
+                  src={`http://localhost:5000/${section.contentUrl}`}
                   controls
-                  className="w-100"
-                  onEnded={() => markCompleted(currentSectionData._id)}
+                  className="w-100 rounded"
+                  onEnded={() => marquerTermine(section._id)}
                 />
               ) : (
                 <iframe
-                  src={`http://localhost:5000/${currentSectionData.contentUrl}`}
+                  src={`http://localhost:5000/${section.contentUrl}`}
                   className="w-100"
-                  style={{ height: '80vh' }}
+                  style={{ height: '75vh' }}
                   title="PDF"
                 />
               )}
-              {/* Affichage du quiz si présent */}
-              {currentSectionData.quizId && (
+              {section.quizId && (
                 <QuizPlayer
                   courseId={courseId}
-                  sectionId={currentSectionData._id}
-                  quiz={currentSectionData.quizId} // attention : il faut que le quiz soit peuplé
+                  sectionId={section._id}
+                  quiz={section.quizId}
                   token={token}
-                  onComplete={onQuizComplete}
+                  onComplete={() => onQuizReussi(section._id)}
                 />
               )}
-              {!isCompleted && (
-                <button
-                  className="btn btn-primary mt-3"
-                  onClick={() => markCompleted(currentSectionData._id)}
-                >
-                  Marquer cette section comme terminée
+              {!estComplete ? (
+                <button className="btn btn-primary mt-3" onClick={() => marquerTermine(section._id)}>
+                  {t('watch.markComplete')}
                 </button>
+              ) : (
+                <div className="alert alert-success mt-3">✓ {t('watch.completed')}</div>
               )}
-              {isCompleted && <div className="alert alert-success mt-3">Section complétée ✓</div>}
             </>
           )}
         </div>
         <div className="col-md-4">
-          <h3>Contenu du cours</h3>
+          <h3>{t('watch.sections')}</h3>
           <ul className="list-group">
-            {sections.map(section => (
-              <li key={section._id} className="list-group-item d-flex justify-content-between align-items-center">
-                <button className="btn btn-link" onClick={() => setCurrentSection(section)}>
-                  {section.title}
+            {sections.map(s => (
+              <li key={s._id} className="list-group-item d-flex justify-content-between align-items-center">
+                <button className="btn btn-link p-0 text-start" onClick={() => setSectionActuelle(s)}>
+                  {s.type === 'video' ? <FaPlayCircle className="me-1" /> : <FaFilePdf className="me-1" />}
+                  {s.title}
                 </button>
-                {enrollment?.sectionProgress?.find(sp => sp.sectionId === section._id)?.completed && (
-                  <span className="badge bg-success">✓</span>
-                )}
+                {progression[s._id] && <FaCheckCircle className="text-success" />}
               </li>
             ))}
           </ul>

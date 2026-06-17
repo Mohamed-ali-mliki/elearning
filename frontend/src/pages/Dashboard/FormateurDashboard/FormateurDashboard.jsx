@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import './FormateurDashboard.css';
 
 export default function FormateurDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [stats, setStats] = useState({ totalCourses: 0, totalStudents: 0, avgProgress: 0 });
@@ -12,7 +14,6 @@ export default function FormateurDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // État pour les sections temporaires lors de la création d'un cours
   const [newCourseSections, setNewCourseSections] = useState([]);
   const [thumbnailFile, setThumbnailFile] = useState(null);
   
@@ -20,7 +21,7 @@ export default function FormateurDashboard() {
   const [currentSection, setCurrentSection] = useState(null);
   const [currentCourseId, setCurrentCourseId] = useState(null);
   const [quizQuestions, setQuizQuestions] = useState([]);
-  const [quizRequired, setQuizRequired] = useState(true); // ✅ AJOUTÉ
+  const [quizRequired, setQuizRequired] = useState(true);
 
   const { register, handleSubmit, reset } = useForm();
 
@@ -33,7 +34,7 @@ export default function FormateurDashboard() {
     const token = localStorage.getItem('token');
     const res = await fetch('/api/formateur/courses', { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) setCourses(await res.json());
-    else setError('Erreur chargement cours');
+    else setError(t('common.error'));
   };
 
   const fetchStats = async () => {
@@ -48,7 +49,6 @@ export default function FormateurDashboard() {
     if (res.ok) setStudents(await res.json());
   };
 
-  // Gestion des sections dans le formulaire de création
   const addSectionToNewCourse = () => {
     setNewCourseSections([...newCourseSections, { title: '', type: 'video', file: null }]);
   };
@@ -70,10 +70,9 @@ export default function FormateurDashboard() {
     updateSectionField(index, 'file', file);
   };
 
-  // Création du cours + upload thumbnail + sections
   const onCreateCourse = async (data) => {
     if (newCourseSections.length === 0) {
-      setError('Ajoutez au moins une section (vidéo ou PDF)');
+      setError(t('dashboard.formateur.noSections'));
       return;
     }
     setLoading(true);
@@ -85,7 +84,7 @@ export default function FormateurDashboard() {
       body: JSON.stringify({ ...data, sections: [] })
     });
     if (!courseRes.ok) {
-      setError('Erreur création cours');
+      setError(t('common.error'));
       setLoading(false);
       return;
     }
@@ -120,16 +119,15 @@ export default function FormateurDashboard() {
     setNewCourseSections([]);
     setThumbnailFile(null);
     setLoading(false);
-    alert('Cours et sections créés avec succès !');
+    alert(t('dashboard.formateur.courseCreated'));
   };
 
-  // Ajout de section sur un cours existant
   const [sectionType, setSectionType] = useState('video');
   const [sectionFile, setSectionFile] = useState(null);
   const [newSectionTitle, setNewSectionTitle] = useState('');
 
   const onAddSection = async (courseId) => {
-    if (!sectionFile || !newSectionTitle) return setError('Titre et fichier requis');
+    if (!sectionFile || !newSectionTitle) return setError(t('dashboard.formateur.titleFileRequired'));
     setLoading(true);
     const formData = new FormData();
     formData.append('file', sectionFile);
@@ -146,18 +144,17 @@ export default function FormateurDashboard() {
       setCourses(courses.map(c => c._id === courseId ? updated : c));
       setSectionFile(null);
       setNewSectionTitle('');
-    } else setError('Erreur upload section');
+    } else setError(t('common.error'));
     setLoading(false);
   };
 
   const deleteSection = async (courseId, sectionId) => {
-    if (!confirm('Supprimer cette section ?')) return;
+    if (!confirm(t('common.deleteConfirm'))) return;
     const token = localStorage.getItem('token');
     const res = await fetch(`/api/formateur/courses/${courseId}/sections/${sectionId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) fetchCourses();
   };
 
-  // Quiz - version modifiée avec quizRequired
   const createQuiz = async (courseId, sectionId) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}`, {
@@ -167,47 +164,46 @@ export default function FormateurDashboard() {
         title: `Quiz pour ${currentSection.title}`,
         questions: quizQuestions,
         passingScore: 70,
-        quizRequired: quizRequired   // ✅ ENVOI DU CHAMP
+        quizRequired: quizRequired
       })
     });
     if (res.ok) {
-      alert('Quiz créé avec succès');
+      alert(t('dashboard.formateur.quizCreated'));
       setShowQuizModal(false);
       setQuizQuestions([]);
       setQuizRequired(true);
       fetchCourses();
-    } else setError('Erreur création quiz');
+    } else setError(t('common.error'));
   };
 
   return (
     <div className="formateur-dashboard">
-      <h1 className="dashboard-title">Espace Formateur</h1>
+      <h1 className="dashboard-title">{t('dashboard.formateur.title')}</h1>
       <div className="stats-row">
-        <div className="stat-card glass">📘 {stats.totalCourses} Cours</div>
-        <div className="stat-card glass">👩‍🎓 {stats.totalStudents} Étudiants</div>
-        <div className="stat-card glass">📊 {Math.round(stats.avgProgress)}% Progression moyenne</div>
+        <div className="stat-card glass">📘 {stats.totalCourses} {t('dashboard.statsCourses')}</div>
+        <div className="stat-card glass">👩‍🎓 {stats.totalStudents} {t('dashboard.formateur.totalStudents')}</div>
+        <div className="stat-card glass">📊 {Math.round(stats.avgProgress)}% {t('dashboard.formateur.averageProgress')}</div>
       </div>
 
-      {/* Formulaire de création de cours */}
       <div className="glass create-course">
-        <h2>Créer un nouveau cours</h2>
+        <h2>{t('dashboard.formateur.createCourse')}</h2>
         <form onSubmit={handleSubmit(onCreateCourse)}>
-          <input {...register('title')} placeholder="Titre du cours" required />
-          <textarea {...register('description')} placeholder="Description" required />
-          <input {...register('category')} placeholder="Catégorie" />
-          <input {...register('price')} type="number" placeholder="Prix (DT)" />
+          <input {...register('title')} placeholder={t('courseDetail.overview')} required />
+          <textarea {...register('description')} placeholder={t('courseDetail.overview')} required />
+          <input {...register('category')} placeholder={t('courses.category')} />
+          <input {...register('price')} type="number" placeholder={`${t('courseDetail.price')} (DT)`} />
           
           <div className="mb-3">
-            <label>Image de couverture (optionnel)</label>
+            <label>{t('dashboard.formateur.thumbnail')}</label>
             <input type="file" accept="image/jpeg,image/png" onChange={e => setThumbnailFile(e.target.files[0])} className="form-control" />
           </div>
 
-          <h4>Sections du cours</h4>
+          <h4>{t('courseDetail.sections')}</h4>
           {newCourseSections.map((sec, idx) => (
             <div key={idx} className="section-item card p-2 mb-2">
               <input
                 type="text"
-                placeholder="Titre de la section"
+                placeholder={t('dashboard.formateur.sectionTitle')}
                 value={sec.title}
                 onChange={e => updateSectionField(idx, 'title', e.target.value)}
                 className="form-control mb-1"
@@ -218,8 +214,8 @@ export default function FormateurDashboard() {
                 onChange={e => updateSectionField(idx, 'type', e.target.value)}
                 className="form-select mb-1"
               >
-                <option value="video">Vidéo (MP4)</option>
-                <option value="pdf">PDF</option>
+                <option value="video">{t('courseDetail.sectionVideo')}</option>
+                <option value="pdf">{t('courseDetail.sectionPdf')}</option>
               </select>
               <input
                 type="file"
@@ -228,31 +224,38 @@ export default function FormateurDashboard() {
                 className="form-control mb-1"
                 required
               />
-              <button type="button" className="btn-sm btn-danger" onClick={() => removeSectionFromNewCourse(idx)}>Supprimer</button>
+              <button type="button" className="btn-sm btn-danger" onClick={() => removeSectionFromNewCourse(idx)}>{t('common.delete')}</button>
             </div>
           ))}
-          <button type="button" className="btn-secondary mb-3" onClick={addSectionToNewCourse}>+ Ajouter une section</button>
+          <button type="button" className="btn-secondary mb-3" onClick={addSectionToNewCourse}>+ {t('dashboard.formateur.addSection')}</button>
 
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Création en cours...' : 'Créer le cours'}
+            {loading ? t('common.loading') : t('dashboard.formateur.createCourse')}
           </button>
         </form>
       </div>
 
-      {/* Liste des cours existants */}
       <div className="courses-list">
-        <h2>Mes cours</h2>
+        <h2>{t('dashboard.formateur.myCourses')}</h2>
         <div className="courses-grid">
           {courses.map(course => (
             <div key={course._id} className="course-card glass">
-              {course.thumbnail && <img src={`/${course.thumbnail}`} alt="thumbnail" style={{ width: '100%', height: '150px', objectFit: 'cover' }} />}
+              <img 
+                src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/default-course.jpg'} 
+                alt="thumbnail" 
+                style={{ width: '100%', height: '150px', objectFit: 'cover' }} 
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '/default-course.jpg';
+                }}
+              />
               <h3>{course.title}</h3>
               <p>{course.description?.slice(0, 100)}...</p>
               <p className="status-badge">{course.status}</p>
-              <button onClick={() => { setSelectedCourse(course); fetchStudents(course._id); }} className="btn-outline">📋 Voir sections & étudiants</button>
+              <button onClick={() => { setSelectedCourse(course); fetchStudents(course._id); }} className="btn-outline">{t('dashboard.formateur.viewSections')}</button>
               {selectedCourse?._id === course._id && (
                 <div className="course-details">
-                  <h4>Sections :</h4>
+                  <h4>{t('courseDetail.sections')} :</h4>
                   <ul>
                     {course.sections.map(section => (
                       <li key={section._id}>
@@ -268,27 +271,26 @@ export default function FormateurDashboard() {
                           }} 
                           className="btn-sm btn-primary ms-2"
                         >
-                          📝 Ajouter quiz
+                          📝 {t('dashboard.formateur.addQuiz')}
                         </button>
-                        {/* ✅ BADGE QUIZ PRÉSENT */}
                         {section.quizId && (
-                          <span className="badge bg-success ms-2">✓ Quiz présent</span>
+                          <span className="badge bg-success ms-2">✓ {t('watch.quizTitle')} {t('dashboard.formateur.present')}</span>
                         )}
                       </li>
                     ))}
                   </ul>
                   <div className="add-section mt-2">
-                    <input type="text" placeholder="Titre de la nouvelle section" value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)} />
+                    <input type="text" placeholder={t('dashboard.formateur.sectionTitle')} value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)} />
                     <select onChange={e => setSectionType(e.target.value)}>
-                      <option value="video">Vidéo (MP4)</option>
-                      <option value="pdf">PDF</option>
+                      <option value="video">{t('courseDetail.sectionVideo')}</option>
+                      <option value="pdf">{t('courseDetail.sectionPdf')}</option>
                     </select>
                     <input type="file" accept={sectionType === 'video' ? 'video/mp4' : 'application/pdf'} onChange={e => setSectionFile(e.target.files[0])} />
-                    <button onClick={() => onAddSection(course._id)} disabled={loading}>{loading ? 'Upload...' : '+ Ajouter section'}</button>
+                    <button onClick={() => onAddSection(course._id)} disabled={loading}>{loading ? t('common.loading') : '+ ' + t('dashboard.formateur.addSection')}</button>
                   </div>
-                  <h4 className="mt-3">Étudiants inscrits :</h4>
+                  <h4 className="mt-3">{t('dashboard.formateur.totalStudents')} :</h4>
                   <ul>
-                    {students.map(s => <li key={s._id}>{s.fullName} - Progression: {s.progress || 0}%</li>)}
+                    {students.map(s => <li key={s._id}>{s.fullName} - {t('dashboard.statsProgress')}: {s.progress || 0}%</li>)}
                   </ul>
                 </div>
               )}
@@ -297,17 +299,15 @@ export default function FormateurDashboard() {
         </div>
       </div>
 
-      {/* Modal création quiz - avec checkbox quizRequired */}
       {showQuizModal && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5>Créer un quiz pour {currentSection?.title}</h5>
+                <h5>{t('dashboard.formateur.createQuizFor')} {currentSection?.title}</h5>
                 <button className="btn-close" onClick={() => setShowQuizModal(false)}></button>
               </div>
               <div className="modal-body">
-                {/* ✅ CHECKBOX QUIZ OBLIGATOIRE */}
                 <div className="mb-3 form-check">
                   <input
                     type="checkbox"
@@ -317,30 +317,30 @@ export default function FormateurDashboard() {
                     onChange={(e) => setQuizRequired(e.target.checked)}
                   />
                   <label className="form-check-label" htmlFor="quizRequiredCheckbox">
-                    Quiz obligatoire pour valider la section
+                    {t('courseDetail.quizRequired')}
                   </label>
                 </div>
 
                 {quizQuestions.map((q, idx) => (
                   <div key={idx} className="border p-2 mb-2">
-                    <input type="text" placeholder="Question" value={q.questionText} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].questionText = e.target.value; setQuizQuestions(newQ); }} className="form-control mb-1" />
+                    <input type="text" placeholder={t('dashboard.admin.question')} value={q.questionText} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].questionText = e.target.value; setQuizQuestions(newQ); }} className="form-control mb-1" />
                     <select value={q.type} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].type = e.target.value; setQuizQuestions(newQ); }} className="form-select mb-1">
-                      <option value="multiple_choice">Choix multiples</option>
-                      <option value="open">Réponse libre</option>
+                      <option value="multiple_choice">{t('dashboard.formateur.multipleChoice')}</option>
+                      <option value="open">{t('dashboard.formateur.freeAnswer')}</option>
                     </select>
                     {q.type === 'multiple_choice' && (
                       <>
-                        <input type="text" placeholder="Options (séparées par des virgules)" value={q.options?.join(',')} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].options = e.target.value.split(','); setQuizQuestions(newQ); }} className="form-control mb-1" />
-                        <input type="text" placeholder="Réponse correcte" value={q.correctAnswer} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].correctAnswer = e.target.value; setQuizQuestions(newQ); }} className="form-control mb-1" />
+                        <input type="text" placeholder={t('dashboard.admin.options')} value={q.options?.join(',')} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].options = e.target.value.split(','); setQuizQuestions(newQ); }} className="form-control mb-1" />
+                        <input type="text" placeholder={t('dashboard.formateur.correctAnswer')} value={q.correctAnswer} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].correctAnswer = e.target.value; setQuizQuestions(newQ); }} className="form-control mb-1" />
                       </>
                     )}
-                    <button className="btn-sm btn-danger" onClick={() => setQuizQuestions(quizQuestions.filter((_, i) => i !== idx))}>Supprimer</button>
+                    <button className="btn-sm btn-danger" onClick={() => setQuizQuestions(quizQuestions.filter((_, i) => i !== idx))}>{t('common.delete')}</button>
                   </div>
                 ))}
-                <button className="btn btn-secondary" onClick={() => setQuizQuestions([...quizQuestions, { questionText: '', type: 'multiple_choice', options: [], correctAnswer: '' }])}>+ Ajouter question</button>
+                <button className="btn btn-secondary" onClick={() => setQuizQuestions([...quizQuestions, { questionText: '', type: 'multiple_choice', options: [], correctAnswer: '' }])}>+ {t('dashboard.formateur.addQuestion')}</button>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-primary" onClick={() => createQuiz(currentCourseId, currentSection._id)}>Enregistrer quiz</button>
+                <button className="btn btn-primary" onClick={() => createQuiz(currentCourseId, currentSection._id)}>{t('common.save')}</button>
               </div>
             </div>
           </div>

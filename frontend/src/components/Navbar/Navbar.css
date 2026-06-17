@@ -1,156 +1,157 @@
-/* Force la navbar à prendre toute la largeur sans marges externes */
-.full-width-navbar {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  left: 0;
+/* ===== STYLES EXISTANTS (à conserver) ===== */
+.user-dropdown {
+  position: relative;
+}
+
+.dropdown-menu-custom {
+  position: absolute;
+  top: calc(100% + 8px);
   right: 0;
+  min-width: 220px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  padding: 8px 0;
+  z-index: 1000;
+  border: 1px solid #e9ecef;
 }
 
-/* Supprime tout padding sur le container-fluid */
-.container-fluid.px-0 {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+body.dark-mode .dropdown-menu-custom {
+  background-color: #2d2d2d;
+  border-color: #444;
 }
 
-/* Liens de navigation – hauteur raisonnable */
-.navbar-light .navbar-nav .nav-link {
-  margin-right: 30px;
-  padding: 15px 0;     /* au lieu de 25px 0 – plus compact */
-  color: #181d38;
-  font-size: 15px;
-  text-transform: uppercase;
-  font-weight: 500;
-  transition: color 0.3s;
-}
-
-.navbar-light .navbar-nav .nav-link:hover,
-.navbar-light .navbar-nav .nav-link.active {
-  color: #06BBCC;
-}
-
-/* Logo – hauteur automatique, pas de taille fixe excessive */
-.navbar-brand {
+.dropdown-menu-custom .dropdown-item {
   display: flex;
   align-items: center;
-  /* Suppression de height: 75px */
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  color: #333;
+  transition: background 0.2s;
 }
 
-/* Barre de recherche */
-.search-form {
-  margin: 0 15px;
-  min-width: 250px;
+body.dark-mode .dropdown-menu-custom .dropdown-item {
+  color: #eee;
 }
 
-.search-form .input-group {
-  border-radius: 30px;
-  overflow: hidden;
+.dropdown-menu-custom .dropdown-item:hover {
   background-color: #f8f9fa;
 }
 
-.search-form .form-control {
-  border: none;
-  background: transparent;
-  padding: 0.5rem 1rem;
+body.dark-mode .dropdown-menu-custom .dropdown-item:hover {
+  background-color: #3a3a3a;
 }
 
-.search-form .btn {
-  border-radius: 0;
-  padding: 0.5rem 1rem;
+.dropdown-menu-custom .dropdown-divider {
+  margin: 8px 0;
+  border-top: 1px solid #e9ecef;
 }
 
-/* Boutons Login / Signup */
-.btn-outline-primary {
-  color: #06BBCC;
-  border-color: #06BBCC;
-}
-.btn-outline-primary:hover {
-  background-color: #06BBCC;
-  color: white;
+body.dark-mode .dropdown-menu-custom .dropdown-divider {
+  border-top-color: #444;
 }
 
-/* Dropdown menu */
-.dropdown-menu.show {
-  display: block;
-  margin-top: 0.5rem;
-  border-radius: 0;
-  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+.avatar-circle {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
-/* Responsive : sur mobile tout en colonne */
-@media (max-width: 991.98px) {
-  .navbar-light .navbar-nav .nav-link {
-    margin-right: 0;
-    padding: 10px 0;
-  }
+/* ===== NOUVEAUX STYLES ===== */
 
-  .search-form {
-    margin: 1rem 0;
-    width: 100%;
-  }
-
-  .auth-buttons {
-    margin-top: 1rem;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-
-  .dropdown-menu.show {
-    position: static !important;
-    width: 100%;
-  }
+/* 1. Liens de navigation plus foncés et indicateur de page active */
+.nav-link {
+  font-weight: 500;
+  color: #555 !important;  /* plus foncé que le gris clair par défaut */
+  transition: color 0.2s;
 }
 
-/* Option pour l'effet sticky (si besoin) */
-.sticky-top {
-  top: -100px;
-  transition: top 0.5s;
-}
-/* =========================
-   DARK MODE
-========================= */
-
-body.dark-mode {
-  background-color: #121212;
-  color: #ffffff;
+.nav-link:hover {
+  color: #0d6efd !important; /* bleu primaire au survol */
 }
 
-body.dark-mode .navbar {
-  background-color: #1e1e1e !important;
+/* Lien actif : texte bleu foncé et souligné */
+.nav-link.active-link {
+  color: #0a58ca !important;  /* bleu foncé */
+  font-weight: 600;
+  border-bottom: 2px solid #0a58ca;
 }
 
+/* En mode sombre, liens plus clairs mais toujours distincts */
 body.dark-mode .nav-link {
-  color: #ffffff !important;
+  color: #ccc !important;
+}
+body.dark-mode .nav-link.active-link {
+  color: #6ea8fe !important;
+  border-bottom-color: #6ea8fe;
 }
 
-body.dark-mode .dropdown-menu {
-  background-color: #222;
+/* 2. Espacement entre la barre de recherche et le bouton dark mode */
+.search-form {
+  min-width: 220px;
+}
+@media (max-width: 992px) {
+  .search-form {
+    min-width: 100%;
+    margin-right: 0 !important;
+    margin-bottom: 10px;
+  }
 }
 
-body.dark-mode .dropdown-item {
-  color: #ffffff;
+/* 3. Bouton de changement de langue stylisé (icône planète) */
+.lang-dropdown {
+  position: relative;
 }
 
-body.dark-mode .dropdown-item:hover {
-  background-color: #333;
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.4rem 0.9rem;
+  border-radius: 50px !important;
+  background: transparent;
+  border: 1.5px solid #dee2e6;
+  transition: all 0.2s;
 }
 
-body.dark-mode .search-form .input-group {
-  background-color: #2a2a2a;
+.lang-btn:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
 }
 
-body.dark-mode .search-form .form-control {
-  background-color: #2a2a2a;
-  color: white;
+body.dark-mode .lang-btn {
+  border-color: #495057;
+  color: #eee;
+}
+body.dark-mode .lang-btn:hover {
+  background-color: #3a3a3a;
+  border-color: #6c757d;
 }
 
-body.dark-mode .search-form .form-control::placeholder {
-  color: #cccccc;
+.lang-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 26px;
+  display: inline-block;
+  text-align: center;
 }
 
-body.dark-mode .btn-light {
-  background-color: #333;
-  color: white;
-  border-color: #444;
+/* Menu déroulant des langues */
+.lang-menu {
+  min-width: 150px !important;
+  right: 0;
+  left: auto !important;
+}
+
+.lang-menu .dropdown-item {
+  cursor: pointer;
+}
+
+.lang-menu .dropdown-item.active-lang {
+  background-color: #e7f1ff;
+  color: #0a58ca;
+  font-weight: 600;
+}
+
+body.dark-mode .lang-menu .dropdown-item.active-lang {
+  background-color: #2a3a5a;
+  color: #6ea8fe;
 }

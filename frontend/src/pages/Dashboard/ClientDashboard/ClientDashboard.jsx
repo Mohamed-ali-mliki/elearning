@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import './ClientDashboard.css';
 
 export default function ClientDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [availableCourses, setAvailableCourses] = useState([]);
@@ -38,7 +40,7 @@ export default function ClientDashboard() {
 
     } catch (err) {
       console.error(err);
-      setError('Erreur lors du chargement des cours');
+      setError(t('common.error'));
     }
   };
 
@@ -56,7 +58,7 @@ export default function ClientDashboard() {
       const data = await res.json();
 
       if (res.ok) {
-        alert('Inscription réussie !');
+        alert(t('courseDetail.enrollSuccess') || 'Inscription réussie !');
         fetchData();
       } else {
         alert(data.message);
@@ -64,15 +66,14 @@ export default function ClientDashboard() {
 
     } catch (err) {
       console.error(err);
-      alert("Erreur lors de l'inscription");
+      alert(t('common.error'));
     }
   };
 
   return (
     <div className="client-dashboard">
-
       <h1 className="dashboard-title">
-        Mes cours, {user?.fullName} 👋
+        {t('dashboard.client.title')}, {user?.fullName} 👋
       </h1>
 
       {error && (
@@ -82,24 +83,24 @@ export default function ClientDashboard() {
       )}
 
       <div className="courses-grid">
-
         {enrolledCourses.length === 0 && (
           <div className="empty-state">
-            Vous n'êtes inscrit à aucun cours pour le moment.
+            {t('dashboard.client.noCourses')}
           </div>
         )}
 
         {enrolledCourses.map(course => (
           <div key={course._id} className="course-card glass">
-
             <img
-              src={course.thumbnail || '/default-course.jpg'}
+              src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/default-course.jpg'}
               alt={course.title}
               className="course-img"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/default-course.jpg';
+              }}
             />
-
             <h3>{course.title}</h3>
-
             <div className="progress-section">
               <div className="progress-bar-bg">
                 <div
@@ -109,30 +110,25 @@ export default function ClientDashboard() {
                   }}
                 />
               </div>
-
               <span>
-                {course.progress || 0}% complété
+                {course.progress || 0}% {t('dashboard.client.completed')}
               </span>
             </div>
-
             <Link
               to={`/watch/${course._id}`}
               className="btn-resume"
             >
-              Reprendre le cours
+              {t('dashboard.client.resume')}
             </Link>
-
           </div>
         ))}
-
       </div>
 
       <h2 className="mt-5">
-        Cours disponibles
+        {t('courses.title')}
       </h2>
 
       <div className="courses-grid">
-
         {availableCourses
           .filter(
             course =>
@@ -141,41 +137,35 @@ export default function ClientDashboard() {
               )
           )
           .map(course => (
-
             <div
               key={course._id}
               className="course-card glass"
             >
-
               <img
-                src={course.thumbnail || '/default-course.jpg'}
+                src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/default-course.jpg'}
                 alt={course.title}
                 className="course-img"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '/default-course.jpg';
+                }}
               />
-
               <h3>{course.title}</h3>
-
               <p>
                 {course.description?.slice(0, 80)}...
               </p>
-
               <p className="price">
                 {course.price} DT
               </p>
-
               <button
                 onClick={() => enrollCourse(course._id)}
                 className="btn-enroll"
               >
-                S'inscrire
+                {t('courseDetail.enrollNow')}
               </button>
-
             </div>
-
           ))}
-
       </div>
-
     </div>
   );
 }
