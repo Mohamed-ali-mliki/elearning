@@ -1,55 +1,81 @@
 const Message = require('../models/Message');
 
-// Envoyer un nouveau message (accessible à tous, même non connectés)
+// Récupérer les messages reçus par un formateur
+exports.getFormateurMessages = async (req, res) => {
+  try {
+    const messages = await Message.find({ receiver: req.user.id })
+      .populate('sender', 'fullName email')
+      .populate('receiver', 'fullName email')
+      .populate('courseId', 'title')
+      .sort({ createdAt: -1 });
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Envoyer un message (étudiant → formateur)
 exports.sendMessage = async (req, res) => {
   try {
-    const { name, email, subject, message } = req.body;
-
-    if (!name || !email || !subject || !message) {
-      return res.status(400).json({ message: 'Tous les champs sont requis' });
-    }
-
-    const newMessage = new Message({ name, email, subject, message });
-    await newMessage.save();
-
-    res.status(201).json({ message: 'Message envoyé avec succès' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    const { receiverId, courseId, content } = req.body;
+    const message = await Message.create({
+      sender: req.user.id,
+      receiver: receiverId,
+      courseId: courseId || null,
+      content
+    });
+    await message.populate('sender', 'fullName email');
+    await message.populate('receiver', 'fullName email');
+    res.status(201).json(message);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// Récupérer tous les messages (admin uniquement)
-exports.getAllMessages = async (req, res) => {
+// Répondre à un message (formateur → étudiant)
+exports.replyToMessage = async (req, res) => {
   try {
-    const messages = await Message.find().sort({ createdAt: -1 });
-    res.json(messages);
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur' });
+    const { messageId } = req.params;
+    const { content } = req.body;
+
+    const parent = await Message.findById(messageId);
+    if (!parent) return res.status(404).json({ message: 'Message non trouvé' });
+
+    const reply = await Message.create({
+      sender: req.user.id,
+      receiver: parent.sender,
+      courseId: parent.courseId,
+      content,
+      parentMessage: messageId
+    });
+
+    await reply.populate('sender', 'fullName email');
+    await reply.populate('receiver', 'fullName email');
+    res.status(201).json(reply);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// Marquer un message comme lu (admin)
+// Marquer un message comme lu
 exports.markAsRead = async (req, res) => {
   try {
     const message = await Message.findById(req.params.id);
     if (!message) return res.status(404).json({ message: 'Message non trouvé' });
-
     message.isRead = true;
     await message.save();
     res.json({ message: 'Message marqué comme lu' });
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// Supprimer un message (admin)
+// Supprimer un message
 exports.deleteMessage = async (req, res) => {
   try {
-    const message = await Message.findByIdAndDelete(req.params.id);
-    if (!message) return res.status(404).json({ message: 'Message non trouvé' });
+    await Message.findByIdAndDelete(req.params.id);
     res.json({ message: 'Message supprimé' });
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

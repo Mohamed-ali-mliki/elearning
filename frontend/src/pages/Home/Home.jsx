@@ -329,7 +329,10 @@ const Home = () => {
                             e.target.src = '/default-course.jpg';
                           }}
                         />
-                        <div className="course-price-tag">{course.price ? `${course.price} €` : t('courses.free')}</div>
+                        {/* ✅ Modification ici : affichage en Dinars Tunisiens (DT) */}
+                        <div className="course-price-tag">
+                          {course.price ? `${course.price} DT` : t('courses.free')}
+                        </div>
                       </div>
                       <div className="course-info">
                         <div className="course-rating">

@@ -3,12 +3,15 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { COMMISSION_RATE, CATEGORIES } from '../../../config/constants';
-import { FaMoneyBillWave } from 'react-icons/fa';
+import { FaMoneyBillWave, FaEnvelope, FaClipboardCheck, FaPlus, FaTrash } from 'react-icons/fa';
+import MessagesTab from './MessagesTab';
+import CorrectionsTab from './CorrectionsTab';
 import './FormateurDashboard.css';
 
 export default function FormateurDashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('stats');
   const [courses, setCourses] = useState([]);
   const [stats, setStats] = useState({ totalCourses: 0, totalStudents: 0, avgProgress: 0 });
   const [financial, setFinancial] = useState({ gross: 0, commission: 0, net: 0 });
@@ -17,21 +20,19 @@ export default function FormateurDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // État pour la création d'un nouveau cours
   const [newCourseSections, setNewCourseSections] = useState([]);
   const [thumbnailFile, setThumbnailFile] = useState(null);
-  
-  // État pour le modal Quiz
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [currentSection, setCurrentSection] = useState(null);
   const [currentCourseId, setCurrentCourseId] = useState(null);
   const [quizQuestions, setQuizQuestions] = useState([]);
   const [quizRequired, setQuizRequired] = useState(true);
-
-  // État pour ajouter une section à un cours existant
   const [sectionVideoFile, setSectionVideoFile] = useState(null);
   const [sectionPdfFile, setSectionPdfFile] = useState(null);
   const [newSectionTitle, setNewSectionTitle] = useState('');
+
+  const [activityType, setActivityType] = useState('quiz');
+  const [quizInstructions, setQuizInstructions] = useState('');
 
   const { register, handleSubmit, reset } = useForm();
 
@@ -41,7 +42,6 @@ export default function FormateurDashboard() {
     fetchFinancialStats();
   }, []);
 
-  // --- Fonctions de récupération (inchangées) ---
   const fetchCourses = async () => {
     const token = localStorage.getItem('token');
     const res = await fetch('/api/formateur/courses', { headers: { Authorization: `Bearer ${token}` } });
@@ -67,12 +67,8 @@ export default function FormateurDashboard() {
     if (res.ok) setStudents(await res.json());
   };
 
-  // --- Gestion des sections pour le nouveau cours (modifié) ---
   const addSectionToNewCourse = () => {
-    setNewCourseSections([
-      ...newCourseSections,
-      { title: '', videoFile: null, pdfFile: null } // plus de type, deux fichiers
-    ]);
+    setNewCourseSections([...newCourseSections, { title: '', videoFile: null, pdfFile: null }]);
   };
 
   const removeSectionFromNewCourse = (index) => {
@@ -97,13 +93,10 @@ export default function FormateurDashboard() {
     updateSectionField(index, 'pdfFile', file);
   };
 
-  // --- Création du cours (modifié) ---
   const onCreateCourse = async (data) => {
-    // 🔹 Les sections sont désormais optionnelles – on ne bloque plus ici
     setLoading(true);
     const token = localStorage.getItem('token');
 
-    // 1. Créer le cours (sans sections)
     const courseRes = await fetch('/api/formateur/courses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -117,7 +110,6 @@ export default function FormateurDashboard() {
     const newCourse = await courseRes.json();
     const courseId = newCourse._id;
 
-    // 2. Ajouter la thumbnail si présente
     if (thumbnailFile) {
       const thumbFormData = new FormData();
       thumbFormData.append('thumbnail', thumbnailFile);
@@ -128,16 +120,12 @@ export default function FormateurDashboard() {
       });
     }
 
-    // 3. Ajouter chaque section (avec vidéo et/ou PDF)
     for (let section of newCourseSections) {
-      // On n'ajoute une section que si au moins un fichier est fourni
       if (!section.videoFile && !section.pdfFile) continue;
-
       const formData = new FormData();
       formData.append('title', section.title);
       if (section.videoFile) formData.append('video', section.videoFile);
-      if (section.pdfFile)   formData.append('pdf', section.pdfFile);
-
+      if (section.pdfFile) formData.append('pdf', section.pdfFile);
       await fetch(`/api/formateur/courses/${courseId}/sections`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -155,7 +143,6 @@ export default function FormateurDashboard() {
     alert(t('dashboard.formateur.courseCreated'));
   };
 
-  // --- Ajout d'une section à un cours existant (modifié) ---
   const onAddSection = async (courseId) => {
     if (!newSectionTitle) return setError(t('dashboard.formateur.titleFileRequired'));
     if (!sectionVideoFile && !sectionPdfFile) return setError(t('dashboard.formateur.atLeastOneFile'));
@@ -164,7 +151,7 @@ export default function FormateurDashboard() {
     const formData = new FormData();
     formData.append('title', newSectionTitle);
     if (sectionVideoFile) formData.append('video', sectionVideoFile);
-    if (sectionPdfFile)   formData.append('pdf', sectionPdfFile);
+    if (sectionPdfFile) formData.append('pdf', sectionPdfFile);
 
     const token = localStorage.getItem('token');
     const res = await fetch(`/api/formateur/courses/${courseId}/sections`, {
@@ -182,24 +169,27 @@ export default function FormateurDashboard() {
     setLoading(false);
   };
 
-  // --- Suppression de section ---
   const deleteSection = async (courseId, sectionId) => {
     if (!confirm(t('common.deleteConfirm'))) return;
     const token = localStorage.getItem('token');
-    const res = await fetch(`/api/formateur/courses/${courseId}/sections/${sectionId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`/api/formateur/courses/${courseId}/sections/${sectionId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
     if (res.ok) fetchCourses();
   };
 
-  // --- Création du quiz (inchangée) ---
   const createQuiz = async (courseId, sectionId) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
-        title: `Quiz pour ${currentSection.title}`,
+        title: `Activité : ${currentSection.title}`,
+        type: activityType,
+        instructions: quizInstructions,
         questions: quizQuestions,
-        passingScore: 70,
+        passingScore: activityType === 'quiz' ? 70 : 0,
         quizRequired: quizRequired
       })
     });
@@ -208,226 +198,525 @@ export default function FormateurDashboard() {
       setShowQuizModal(false);
       setQuizQuestions([]);
       setQuizRequired(true);
+      setActivityType('quiz');
+      setQuizInstructions('');
       fetchCourses();
     } else setError(t('common.error'));
   };
 
-  // --- Rendu ---
+  // Fonctions pour gérer les options des questions
+  const addOptionToQuestion = (qIndex) => {
+    const updated = [...quizQuestions];
+    updated[qIndex].options.push('');
+    setQuizQuestions(updated);
+  };
+
+  const removeOptionFromQuestion = (qIndex, optIndex) => {
+    const updated = [...quizQuestions];
+    updated[qIndex].options.splice(optIndex, 1);
+    // Si l'option supprimée était la bonne réponse, on la réinitialise
+    if (updated[qIndex].correctAnswer === optIndex.toString()) {
+      updated[qIndex].correctAnswer = '';
+    } else if (parseInt(updated[qIndex].correctAnswer) > optIndex) {
+      // Décrémenter l'index si la bonne réponse est après l'option supprimée
+      updated[qIndex].correctAnswer = (parseInt(updated[qIndex].correctAnswer) - 1).toString();
+    }
+    setQuizQuestions(updated);
+  };
+
+  const updateOptionText = (qIndex, optIndex, value) => {
+    const updated = [...quizQuestions];
+    updated[qIndex].options[optIndex] = value;
+    setQuizQuestions(updated);
+  };
+
+  const updateCorrectAnswer = (qIndex, value) => {
+    const updated = [...quizQuestions];
+    updated[qIndex].correctAnswer = value;
+    setQuizQuestions(updated);
+  };
+
+  const addQuestion = () => {
+    const newQuestion = {
+      questionText: '',
+      type: activityType === 'quiz' ? 'multiple_choice' : 'open',
+      options: activityType === 'quiz' ? [''] : [],
+      correctAnswer: '',
+      points: activityType === 'quiz' ? 1 : 0
+    };
+    setQuizQuestions([...quizQuestions, newQuestion]);
+  };
+
+  // ---------- RENDU ----------
   return (
     <div className="formateur-dashboard">
       <h1 className="dashboard-title">{t('dashboard.formateur.title')}</h1>
-      <div className="stats-row">
-        <div className="stat-card glass">📘 {stats.totalCourses} {t('dashboard.statsCourses')}</div>
-        <div className="stat-card glass">👩‍🎓 {stats.totalStudents} {t('dashboard.formateur.totalStudents')}</div>
-        {/* Carte Revenus */}
-        <div className="stat-card glass border-success" style={{ borderLeft: '4px solid #28a745' }}>
-          <h5><FaMoneyBillWave className="me-2" /> Vos revenus</h5>
-          <div className="mt-2">
-            <div className="d-flex justify-content-between">
-              <span>Brut</span>
-              <strong>{financial.gross.toFixed(2)} DT</strong>
-            </div>
-            <div className="d-flex justify-content-between text-muted small">
-              <span>Commission ({COMMISSION_RATE * 100}%)</span>
-              <span>-{financial.commission.toFixed(2)} DT</span>
-            </div>
-            <hr className="my-1" />
-            <div className="d-flex justify-content-between fs-5 fw-bold text-success">
-              <span>Net (votre gain)</span>
-              <span>{financial.net.toFixed(2)} DT</span>
-            </div>
-          </div>
-          <small className="text-muted">Basé sur les inscriptions</small>
-        </div>
+
+      {/* Onglets */}
+      <div className="nav nav-tabs mb-4">
+        <button
+          className={`nav-link ${activeTab === 'stats' ? 'active' : ''}`}
+          onClick={() => setActiveTab('stats')}
+        >
+          📊 Statistiques
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'messages' ? 'active' : ''}`}
+          onClick={() => setActiveTab('messages')}
+        >
+          <FaEnvelope className="me-1" /> Messages
+        </button>
+        <button
+          className={`nav-link ${activeTab === 'corrections' ? 'active' : ''}`}
+          onClick={() => setActiveTab('corrections')}
+        >
+          <FaClipboardCheck className="me-1" /> Corrections
+        </button>
       </div>
 
-      {/* Formulaire de création de cours */}
-      <div className="glass create-course">
-        <h2>{t('dashboard.formateur.createCourse')}</h2>
-        <form onSubmit={handleSubmit(onCreateCourse)}>
-          <input {...register('title')} placeholder={t('courseDetail.overview')} required />
-          <textarea {...register('description')} placeholder={t('courseDetail.overview')} required />
-          
-          {/* 🔹 Catégorie : liste déroulante */}
-          <select {...register('category')} className="form-select mb-2">
-            <option value="">Sélectionnez une catégorie</option>
-            {CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-
-          {/* 🔹 Prix : libellé TND */}
-          <input {...register('price')} type="number" step="0.01" placeholder="Prix (TND)" className="form-control mb-2" />
-
-          <div className="mb-3">
-            <label>{t('dashboard.formateur.thumbnail')}</label>
-            <input type="file" accept="image/jpeg,image/png" onChange={e => setThumbnailFile(e.target.files[0])} className="form-control" />
-          </div>
-
-          <h4>{t('courseDetail.sections')} (optionnelles)</h4>
-          {newCourseSections.map((sec, idx) => (
-            <div key={idx} className="section-item card p-2 mb-2">
-              <input
-                type="text"
-                placeholder={t('dashboard.formateur.sectionTitle')}
-                value={sec.title}
-                onChange={e => updateSectionField(idx, 'title', e.target.value)}
-                className="form-control mb-1"
-                required
-              />
-              {/* 🔹 Deux champs de fichier : vidéo et PDF */}
-              <div className="row">
-                <div className="col-6">
-                  <label className="form-label small">Vidéo (MP4)</label>
-                  <input
-                    type="file"
-                    accept="video/mp4"
-                    onChange={e => handleSectionVideoChange(idx, e)}
-                    className="form-control"
-                  />
+      {/* Contenu des onglets */}
+      {activeTab === 'stats' && (
+        <>
+          {/* Statistiques */}
+          <div className="stats-row">
+            <div className="stat-card glass">📘 {stats.totalCourses} {t('dashboard.statsCourses')}</div>
+            <div className="stat-card glass">👩‍🎓 {stats.totalStudents} {t('dashboard.formateur.totalStudents')}</div>
+            <div className="stat-card glass border-success" style={{ borderLeft: '4px solid #28a745' }}>
+              <h5><FaMoneyBillWave className="me-2" /> Vos revenus</h5>
+              <div className="mt-2">
+                <div className="d-flex justify-content-between">
+                  <span>Brut</span>
+                  <strong>{financial.gross.toFixed(2)} DT</strong>
                 </div>
-                <div className="col-6">
-                  <label className="form-label small">PDF</label>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={e => handleSectionPdfChange(idx, e)}
-                    className="form-control"
-                  />
+                <div className="d-flex justify-content-between text-muted small">
+                  <span>Commission ({COMMISSION_RATE * 100}%)</span>
+                  <span>-{financial.commission.toFixed(2)} DT</span>
+                </div>
+                <hr className="my-1" />
+                <div className="d-flex justify-content-between fs-5 fw-bold text-success">
+                  <span>Net (votre gain)</span>
+                  <span>{financial.net.toFixed(2)} DT</span>
                 </div>
               </div>
-              <button type="button" className="btn-sm btn-danger mt-2" onClick={() => removeSectionFromNewCourse(idx)}>
-                {t('common.delete')}
-              </button>
+              <small className="text-muted">Basé sur les inscriptions</small>
             </div>
-          ))}
-          <button type="button" className="btn-secondary mb-3" onClick={addSectionToNewCourse}>
-            + {t('dashboard.formateur.addSection')}
-          </button>
+          </div>
 
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? t('common.loading') : t('dashboard.formateur.createCourse')}
-          </button>
-        </form>
-      </div>
-
-      {/* Liste des cours existants */}
-      <div className="courses-list">
-        <h2>{t('dashboard.formateur.myCourses')}</h2>
-        <div className="courses-grid">
-          {courses.map(course => (
-            <div key={course._id} className="course-card glass">
-              <img 
-                src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/default-course.jpg'} 
-                alt="thumbnail" 
-                style={{ width: '100%', height: '150px', objectFit: 'cover' }} 
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = '/default-course.jpg';
-                }}
-              />
-              <h3>{course.title}</h3>
-              <p>{course.description?.slice(0, 100)}...</p>
-              <p className="status-badge">{course.status}</p>
-              <button onClick={() => { setSelectedCourse(course); fetchStudents(course._id); }} className="btn-outline">
-                {t('dashboard.formateur.viewSections')}
-              </button>
-              {selectedCourse?._id === course._id && (
-                <div className="course-details">
-                  <h4>{t('courseDetail.sections')} :</h4>
-                  <ul>
-                    {course.sections.map(section => (
-                      <li key={section._id}>
-                        {section.title}
-                        {section.videoUrl && <span className="badge bg-info ms-1">🎬 Vidéo</span>}
-                        {section.pdfUrl && <span className="badge bg-warning ms-1">📄 PDF</span>}
-                        <button onClick={() => deleteSection(course._id, section._id)} className="btn-sm btn-danger ms-2">🗑️</button>
-                        <button 
-                          onClick={() => { 
-                            setCurrentSection(section); 
-                            setCurrentCourseId(course._id); 
-                            setQuizQuestions([]); 
-                            setQuizRequired(true); 
-                            setShowQuizModal(true); 
-                          }} 
-                          className="btn-sm btn-primary ms-2"
-                        >
-                          📝 {t('dashboard.formateur.addQuiz')}
-                        </button>
-                        {section.quizId && (
-                          <span className="badge bg-success ms-2">✓ {t('watch.quizTitle')} {t('dashboard.formateur.present')}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="add-section mt-2">
-                    <input type="text" placeholder={t('dashboard.formateur.sectionTitle')} value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)} className="form-control mb-1" />
-                    <div className="row">
-                      <div className="col-6">
-                        <input type="file" accept="video/mp4" onChange={e => setSectionVideoFile(e.target.files[0])} className="form-control" />
-                      </div>
-                      <div className="col-6">
-                        <input type="file" accept="application/pdf" onChange={e => setSectionPdfFile(e.target.files[0])} className="form-control" />
+          {/* Formulaire de création de cours */}
+          <div className="glass create-course">
+            <h2>{t('dashboard.formateur.createCourse')}</h2>
+            <form onSubmit={handleSubmit(onCreateCourse)}>
+              <input {...register('title')} placeholder={t('courseDetail.overview')} required />
+              <textarea {...register('description')} placeholder={t('courseDetail.overview')} required />
+              <select {...register('category')} className="form-select mb-2">
+                <option value="">Sélectionnez une catégorie</option>
+                {CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <input {...register('price')} type="number" step="0.01" placeholder="Prix (TND)" className="form-control mb-2" />
+              <div className="mb-3">
+                <label>{t('dashboard.formateur.thumbnail')}</label>
+                <input type="file" accept="image/jpeg,image/png" onChange={e => setThumbnailFile(e.target.files[0])} className="form-control" />
+              </div>
+              <h4>{t('courseDetail.sections')} (optionnelles)</h4>
+              {newCourseSections.map((sec, idx) => (
+                <div key={idx} className="section-item card p-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder={t('dashboard.formateur.sectionTitle')}
+                    value={sec.title}
+                    onChange={e => updateSectionField(idx, 'title', e.target.value)}
+                    className="form-control mb-1"
+                    required
+                  />
+                  <div className="row">
+                    <div className="col-6">
+                      <label className="form-label small">Vidéo (MP4)</label>
+                      <div className="custom-file-upload">
+                        <label htmlFor={`video-${idx}`} className="btn btn-outline-primary btn-sm w-100">
+                          📹 Vidéo
+                        </label>
+                        <input
+                          type="file"
+                          id={`video-${idx}`}
+                          accept="video/mp4"
+                          onChange={e => handleSectionVideoChange(idx, e)}
+                          className="d-none"
+                        />
+                        {sec.videoFile && <span className="ms-2 text-success">{sec.videoFile.name}</span>}
                       </div>
                     </div>
-                    <button onClick={() => onAddSection(course._id)} disabled={loading} className="btn btn-primary mt-2">
-                      {loading ? t('common.loading') : '+ ' + t('dashboard.formateur.addSection')}
-                    </button>
+                    <div className="col-6">
+                      <label className="form-label small">PDF</label>
+                      <div className="custom-file-upload">
+                        <label htmlFor={`pdf-${idx}`} className="btn btn-outline-danger btn-sm w-100">
+                          📄 PDF
+                        </label>
+                        <input
+                          type="file"
+                          id={`pdf-${idx}`}
+                          accept="application/pdf"
+                          onChange={e => handleSectionPdfChange(idx, e)}
+                          className="d-none"
+                        />
+                        {sec.pdfFile && <span className="ms-2 text-success">{sec.pdfFile.name}</span>}
+                      </div>
+                    </div>
                   </div>
-                  <h4 className="mt-3">{t('dashboard.formateur.totalStudents')} :</h4>
-                  <ul>
-                    {students.map(s => <li key={s._id}>{s.fullName} - {t('dashboard.statsProgress')}: {s.progress || 0}%</li>)}
-                  </ul>
+                  <button type="button" className="btn-sm btn-danger mt-2" onClick={() => removeSectionFromNewCourse(idx)}>
+                    {t('common.delete')}
+                  </button>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+              ))}
+              <button type="button" className="btn-secondary mb-3" onClick={addSectionToNewCourse}>
+                + {t('dashboard.formateur.addSection')}
+              </button>
+              <button type="submit" className="btn-primary" disabled={loading}>
+                {loading ? t('common.loading') : t('dashboard.formateur.createCourse')}
+              </button>
+            </form>
+          </div>
 
-      {/* Modal Quiz (inchangé) */}
+          {/* Liste des cours */}
+          <div className="courses-list">
+            <h2>{t('dashboard.formateur.myCourses')}</h2>
+            <div className="courses-grid">
+              {courses.map(course => (
+                <div key={course._id} className="course-card glass">
+                  <img
+                    src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/default-course.jpg'}
+                    alt="thumbnail"
+                    style={{ width: '100%', height: '150px', objectFit: 'cover' }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = '/default-course.jpg';
+                    }}
+                  />
+                  <h3>{course.title}</h3>
+                  <p>{course.description?.slice(0, 100)}...</p>
+                  <p className="status-badge">{course.status}</p>
+                  <button onClick={() => { setSelectedCourse(course); fetchStudents(course._id); }} className="btn-outline">
+                    {t('dashboard.formateur.viewSections')}
+                  </button>
+                  {selectedCourse?._id === course._id && (
+                    <div className="course-details">
+                      <h4>{t('courseDetail.sections')} :</h4>
+                      <ul>
+                        {course.sections.map(section => (
+                          <li key={section._id}>
+                            {section.title}
+                            {section.videoUrl && <span className="badge bg-info ms-1">🎬 Vidéo</span>}
+                            {section.pdfUrl && <span className="badge bg-warning ms-1">📄 PDF</span>}
+                            <button onClick={() => deleteSection(course._id, section._id)} className="btn-sm btn-danger ms-2">🗑️</button>
+                            {/* Boutons distincts */}
+                            <button
+                              className="btn-sm btn-primary ms-2"
+                              onClick={() => {
+                                setCurrentSection(section);
+                                setCurrentCourseId(course._id);
+                                setQuizQuestions([]);
+                                setQuizRequired(true);
+                                setActivityType('quiz');
+                                setQuizInstructions('');
+                                setShowQuizModal(true);
+                              }}
+                            >
+                              📝 Ajouter un quiz
+                            </button>
+                            <button
+                              className="btn-sm btn-success ms-2"
+                              onClick={() => {
+                                setCurrentSection(section);
+                                setCurrentCourseId(course._id);
+                                setQuizQuestions([]);
+                                setQuizRequired(true);
+                                setActivityType('exercice');
+                                setQuizInstructions('');
+                                setShowQuizModal(true);
+                              }}
+                            >
+                              📓 Ajouter un exercice
+                            </button>
+                            {section.quizId && (
+                              <span className="badge bg-success ms-2">✓ {t('watch.quizTitle')} {t('dashboard.formateur.present')}</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="add-section mt-2">
+                        <input type="text" placeholder={t('dashboard.formateur.sectionTitle')} value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)} className="form-control mb-1" />
+                        <div className="row">
+                          <div className="col-6">
+                            <label className="form-label small">Vidéo (MP4)</label>
+                            <div className="custom-file-upload">
+                              <label htmlFor="addVideo" className="btn btn-outline-primary btn-sm w-100">
+                                📹 Vidéo
+                              </label>
+                              <input
+                                type="file"
+                                id="addVideo"
+                                accept="video/mp4"
+                                onChange={e => setSectionVideoFile(e.target.files[0])}
+                                className="d-none"
+                              />
+                              {sectionVideoFile && <span className="ms-2 text-success">{sectionVideoFile.name}</span>}
+                            </div>
+                          </div>
+                          <div className="col-6">
+                            <label className="form-label small">PDF</label>
+                            <div className="custom-file-upload">
+                              <label htmlFor="addPdf" className="btn btn-outline-danger btn-sm w-100">
+                                📄 PDF
+                              </label>
+                              <input
+                                type="file"
+                                id="addPdf"
+                                accept="application/pdf"
+                                onChange={e => setSectionPdfFile(e.target.files[0])}
+                                className="d-none"
+                              />
+                              {sectionPdfFile && <span className="ms-2 text-success">{sectionPdfFile.name}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <button onClick={() => onAddSection(course._id)} disabled={loading} className="btn btn-primary mt-2">
+                          {loading ? t('common.loading') : '+ ' + t('dashboard.formateur.addSection')}
+                        </button>
+                      </div>
+                      <h4 className="mt-3">{t('dashboard.formateur.totalStudents')} :</h4>
+                      <ul>
+                        {students.map(s => <li key={s._id}>{s.fullName} - {t('dashboard.statsProgress')}: {s.progress || 0}%</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'messages' && <MessagesTab />}
+      {activeTab === 'corrections' && <CorrectionsTab />}
+
+      {/* ✅ Modal de création avec interface améliorée */}
       {showQuizModal && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5>{t('dashboard.formateur.createQuizFor')} {currentSection?.title}</h5>
-                <button className="btn-close" onClick={() => setShowQuizModal(false)}></button>
+                <h5>
+                  {activityType === 'quiz' ? '📝 Ajouter un quiz' : '📓 Ajouter un exercice'} – {currentSection?.title}
+                </h5>
+                <button
+                  className="btn-close"
+                  onClick={() => {
+                    setShowQuizModal(false);
+                    setActivityType('quiz');
+                    setQuizInstructions('');
+                    setQuizQuestions([]);
+                  }}
+                ></button>
               </div>
               <div className="modal-body">
-                <div className="mb-3 form-check">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    id="quizRequiredCheckbox"
-                    checked={quizRequired}
-                    onChange={(e) => setQuizRequired(e.target.checked)}
-                  />
-                  <label className="form-check-label" htmlFor="quizRequiredCheckbox">
-                    {t('courseDetail.quizRequired')}
-                  </label>
-                </div>
+                {/* Consignes pour exercice */}
+                {activityType === 'exercice' && (
+                  <div className="mb-3">
+                    <label className="form-label">Consignes (optionnel)</label>
+                    <textarea
+                      className="form-control"
+                      rows="2"
+                      placeholder="Décrivez l'exercice..."
+                      value={quizInstructions}
+                      onChange={(e) => setQuizInstructions(e.target.value)}
+                    />
+                  </div>
+                )}
 
-                {quizQuestions.map((q, idx) => (
-                  <div key={idx} className="border p-2 mb-2">
-                    <input type="text" placeholder={t('dashboard.admin.question')} value={q.questionText} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].questionText = e.target.value; setQuizQuestions(newQ); }} className="form-control mb-1" />
-                    <select value={q.type} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].type = e.target.value; setQuizQuestions(newQ); }} className="form-select mb-1">
-                      <option value="multiple_choice">{t('dashboard.formateur.multipleChoice')}</option>
-                      <option value="open">{t('dashboard.formateur.freeAnswer')}</option>
-                    </select>
-                    {q.type === 'multiple_choice' && (
-                      <>
-                        <input type="text" placeholder={t('dashboard.admin.options')} value={q.options?.join(',')} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].options = e.target.value.split(','); setQuizQuestions(newQ); }} className="form-control mb-1" />
-                        <input type="text" placeholder={t('dashboard.formateur.correctAnswer')} value={q.correctAnswer} onChange={e => { const newQ = [...quizQuestions]; newQ[idx].correctAnswer = e.target.value; setQuizQuestions(newQ); }} className="form-control mb-1" />
-                      </>
+                {/* Quiz obligatoire (pour quiz uniquement) */}
+                {activityType === 'quiz' && (
+                  <div className="mb-3 form-check">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id="quizRequiredCheckbox"
+                      checked={quizRequired}
+                      onChange={(e) => setQuizRequired(e.target.checked)}
+                    />
+                    <label className="form-check-label" htmlFor="quizRequiredCheckbox">
+                      {t('courseDetail.quizRequired')}
+                    </label>
+                  </div>
+                )}
+
+                {/* Liste des questions */}
+                {quizQuestions.map((q, qIdx) => (
+                  <div key={qIdx} className="border p-3 mb-3 rounded">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <h6 className="mb-0">Question {qIdx+1}</h6>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => setQuizQuestions(quizQuestions.filter((_, i) => i !== qIdx))}
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+
+                    {/* Champ question */}
+                    <input
+                      type="text"
+                      className="form-control mb-2"
+                      placeholder="Texte de la question"
+                      value={q.questionText}
+                      onChange={e => {
+                        const updated = [...quizQuestions];
+                        updated[qIdx].questionText = e.target.value;
+                        setQuizQuestions(updated);
+                      }}
+                      required
+                    />
+
+                    {/* Pour les quiz, choix du type de question */}
+                    {activityType === 'quiz' && (
+                      <div className="mb-2">
+                        <select
+                          className="form-select"
+                          value={q.type}
+                          onChange={e => {
+                            const updated = [...quizQuestions];
+                            updated[qIdx].type = e.target.value;
+                            if (e.target.value === 'open') {
+                              updated[qIdx].options = [];
+                              updated[qIdx].correctAnswer = '';
+                            } else {
+                              updated[qIdx].options = [''];
+                            }
+                            setQuizQuestions(updated);
+                          }}
+                        >
+                          <option value="multiple_choice">QCM (choix unique)</option>
+                          <option value="open">Question ouverte</option>
+                        </select>
+                      </div>
                     )}
-                    <button className="btn-sm btn-danger" onClick={() => setQuizQuestions(quizQuestions.filter((_, i) => i !== idx))}>{t('common.delete')}</button>
+
+                    {/* Si c'est un exercice, on force "open" */}
+                    {activityType === 'exercice' && (
+                      <div className="text-muted small mb-2">Question ouverte (sans auto‑correction)</div>
+                    )}
+
+                    {/* Gestion des options pour QCM */}
+                    {q.type === 'multiple_choice' && activityType === 'quiz' && (
+                      <div className="mb-2">
+                        <label className="form-label">Options</label>
+                        {q.options.map((opt, optIdx) => (
+                          <div key={optIdx} className="input-group mb-1">
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder={`Option ${optIdx+1}`}
+                              value={opt}
+                              onChange={e => updateOptionText(qIdx, optIdx, e.target.value)}
+                            />
+                            <button
+                              className="btn btn-outline-danger"
+                              type="button"
+                              onClick={() => removeOptionFromQuestion(qIdx, optIdx)}
+                              disabled={q.options.length <= 1}
+                            >
+                              <FaTrash size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          className="btn btn-sm btn-outline-secondary mt-1"
+                          onClick={() => addOptionToQuestion(qIdx)}
+                        >
+                          <FaPlus className="me-1" /> Ajouter une option
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Sélection de la bonne réponse pour QCM */}
+                    {q.type === 'multiple_choice' && activityType === 'quiz' && q.options.length > 0 && (
+                      <div className="mb-2">
+                        <label className="form-label">Bonne réponse</label>
+                        <select
+                          className="form-select"
+                          value={q.correctAnswer}
+                          onChange={e => updateCorrectAnswer(qIdx, e.target.value)}
+                        >
+                          <option value="">-- Sélectionnez --</option>
+                          {q.options.map((opt, idx) => (
+                            <option key={idx} value={idx.toString()}>{opt || `Option ${idx+1}`}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Pour les questions ouvertes, on peut laisser un champ de réponse correcte (optionnel) */}
+                    {(q.type === 'open' || activityType === 'exercice') && (
+                      <div className="mb-2">
+                        <label className="form-label">Réponse attendue (optionnelle, pour aider à la correction)</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Indice de réponse..."
+                          value={q.correctAnswer || ''}
+                          onChange={e => {
+                            const updated = [...quizQuestions];
+                            updated[qIdx].correctAnswer = e.target.value;
+                            setQuizQuestions(updated);
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Points (pour quiz uniquement) */}
+                    {activityType === 'quiz' && (
+                      <div className="mb-1">
+                        <label className="form-label">Points</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          min="0"
+                          step="0.5"
+                          value={q.points || 1}
+                          onChange={e => {
+                            const updated = [...quizQuestions];
+                            updated[qIdx].points = parseFloat(e.target.value) || 1;
+                            setQuizQuestions(updated);
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
-                <button className="btn btn-secondary" onClick={() => setQuizQuestions([...quizQuestions, { questionText: '', type: 'multiple_choice', options: [], correctAnswer: '' }])}>+ {t('dashboard.formateur.addQuestion')}</button>
+
+                {/* Bouton ajouter question */}
+                <button className="btn btn-secondary" onClick={addQuestion}>
+                  <FaPlus className="me-1" /> {t('dashboard.formateur.addQuestion')}
+                </button>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-primary" onClick={() => createQuiz(currentCourseId, currentSection._id)}>{t('common.save')}</button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowQuizModal(false);
+                    setActivityType('quiz');
+                    setQuizInstructions('');
+                    setQuizQuestions([]);
+                  }}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => createQuiz(currentCourseId, currentSection._id)}
+                >
+                  {t('common.save')}
+                </button>
               </div>
             </div>
           </div>

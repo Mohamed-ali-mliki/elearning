@@ -7,7 +7,7 @@ const {
   getCourseById, getApprovedCourses, addThumbnail
 } = require('../controllers/courseController');
 const { getFormateurFinancialStats } = require('../controllers/statsController');
-const { uploadSingle } = require('../controllers/uploadController');
+const { uploadSingle, uploadFields } = require('../controllers/uploadController'); // ✅ import uploadFields
 
 const router = express.Router();
 
@@ -19,11 +19,11 @@ router.get('/courses/:id', getCourseById);
 router.get('/formateur/courses', protect, isFormateur, getFormateurCourses);
 router.post('/formateur/courses', protect, isFormateur, createCourse);
 router.post('/formateur/courses/:courseId/thumbnail', protect, isFormateur, uploadSingle('thumbnail'), addThumbnail);
-router.post('/formateur/courses/:courseId/sections', protect, isFormateur, uploadSingle('file'), addSection);
+// ✅ Utiliser uploadFields (pour video et pdf) au lieu de uploadSingle('file')
+router.post('/formateur/courses/:courseId/sections', protect, isFormateur, uploadFields, addSection);
 router.delete('/formateur/courses/:courseId/sections/:sectionId', protect, isFormateur, deleteSection);
 router.get('/formateur/courses/:courseId/students', protect, isFormateur, getCourseStudents);
 router.get('/formateur/stats', protect, isFormateur, getFormateurStats);
-// Nouvelle route financière pour formateur
 router.get('/formateur/stats/financial', protect, isFormateur, getFormateurFinancialStats);
 
 // Admin

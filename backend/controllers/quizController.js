@@ -2,11 +2,11 @@ const Quiz = require('../models/Quiz');
 const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
 
-// Créer un quiz pour une section
+// Créer un quiz ou un exercice pour une section
 exports.createQuizForSection = async (req, res) => {
   try {
     const { courseId, sectionId } = req.params;
-    const { title, questions, passingScore, quizRequired } = req.body;
+    const { title, type, instructions, questions, passingScore, quizRequired, maxScore } = req.body;
 
     if (!title || !questions || questions.length === 0) {
       return res.status(400).json({ message: 'Titre et questions requis' });
@@ -18,26 +18,49 @@ exports.createQuizForSection = async (req, res) => {
     const section = course.sections.id(sectionId);
     if (!section) return res.status(404).json({ message: 'Section non trouvée' });
 
-    const quiz = await Quiz.create({
+    // Préparer les données du quiz
+    const quizData = {
       title,
-      questions,
+      type: type || 'quiz',
+      instructions: instructions || '',
+      questions: questions.map(q => ({
+        questionText: q.questionText,
+        type: q.type || 'open',
+        options: q.options || [],
+        correctAnswer: q.correctAnswer || '',
+        points: q.points || 1
+      })),
       passingScore: passingScore || 70,
-      courseId,
-      sectionId
-    });
+      maxScore: maxScore || 0
+    };
+
+    // Si c'est un exercice, on force toutes les questions en 'open' et on retire les options/correctAnswer
+    if (quizData.type === 'exercice') {
+      quizData.questions = quizData.questions.map(q => ({
+        questionText: q.questionText,
+        type: 'open',
+        options: [],
+        correctAnswer: '',
+        points: 0
+      }));
+      quizData.passingScore = 0;
+    }
+
+    const quiz = new Quiz(quizData);
+    await quiz.save();
 
     section.quizId = quiz._id;
-    section.quizRequired = (quizRequired !== undefined) ? quizRequired : true;
+    section.quizRequired = (quizRequired !== undefined) ? quizRequired : (quizData.type === 'quiz');
     await course.save();
 
     res.status(201).json(quiz);
   } catch (err) {
-    console.error('Erreur création quiz:', err);
+    console.error('Erreur création quiz/exercice:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// Soumettre un quiz (étudiant) – version hybride
+// Soumettre un quiz ou un exercice
 exports.submitQuiz = async (req, res) => {
   try {
     const { courseId, sectionId } = req.params;
@@ -55,6 +78,38 @@ exports.submitQuiz = async (req, res) => {
     let earnedPoints = 0;
     const detailedAnswers = [];
 
+    // Cas d'un exercice
+    if (quiz.type === 'exercice') {
+      const userAnswers = answers.map((ans, idx) => ({
+        questionId: idx,
+        userAnswer: ans || '',
+        autoScored: false,
+        needsReview: true,
+        earnedPoints: 0
+      }));
+
+      let enrollment = await Enrollment.findOne({ userId, courseId });
+      if (!enrollment) return res.status(403).json({ message: 'Non inscrit' });
+
+      if (!enrollment.quizSubmissions) enrollment.quizSubmissions = [];
+      const existingSubIndex = enrollment.quizSubmissions.findIndex(sub => sub.quizId.toString() === quiz._id.toString());
+      const newSubmission = {
+        quizId: quiz._id,
+        answers: userAnswers,
+        submittedAt: new Date(),
+        reviewed: false
+      };
+      if (existingSubIndex !== -1) {
+        enrollment.quizSubmissions[existingSubIndex] = newSubmission;
+      } else {
+        enrollment.quizSubmissions.push(newSubmission);
+      }
+      await enrollment.save();
+
+      return res.json({ message: 'Exercice soumis avec succès !', type: 'exercice' });
+    }
+
+    // Cas d'un quiz (avec notation)
     quiz.questions.forEach((q, idx) => {
       const points = q.points || 1;
       totalPoints += points;
@@ -70,8 +125,7 @@ exports.submitQuiz = async (req, res) => {
           needsReview: false,
           earnedPoints: earned
         });
-      } 
-      else if (q.type === 'open') {
+      } else { // open
         const normalizedUser = userAnswer.trim().toLowerCase();
         const normalizedCorrect = (q.correctAnswer || '').trim().toLowerCase();
         const isExactMatch = (normalizedCorrect !== '' && normalizedUser === normalizedCorrect);
@@ -101,7 +155,7 @@ exports.submitQuiz = async (req, res) => {
       enrollment.quizScores.push({ quizId: quiz._id, score });
     }
 
-    // Mettre à jour quizSubmissions (si le champ existe)
+    // Mettre à jour quizSubmissions
     if (enrollment.quizSubmissions) {
       const existingSubIndex = enrollment.quizSubmissions.findIndex(sub => sub.quizId.toString() === quiz._id.toString());
       const newSubmission = {
@@ -126,7 +180,7 @@ exports.submitQuiz = async (req, res) => {
   }
 };
 
-// Récupérer le score d'un quiz
+// Récupérer le score d'un quiz (ou null pour exercice)
 exports.getQuizScore = async (req, res) => {
   try {
     const { courseId, sectionId } = req.params;
