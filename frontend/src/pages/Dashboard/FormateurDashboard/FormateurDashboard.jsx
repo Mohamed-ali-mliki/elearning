@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { COMMISSION_RATE } from '../../../config/constants';
+import { FaMoneyBillWave } from 'react-icons/fa';
 import './FormateurDashboard.css';
 
 export default function FormateurDashboard() {
@@ -9,6 +11,7 @@ export default function FormateurDashboard() {
   const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [stats, setStats] = useState({ totalCourses: 0, totalStudents: 0, avgProgress: 0 });
+  const [financial, setFinancial] = useState({ gross: 0, commission: 0, net: 0 });
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,6 +31,7 @@ export default function FormateurDashboard() {
   useEffect(() => {
     fetchCourses();
     fetchStats();
+    fetchFinancialStats();
   }, []);
 
   const fetchCourses = async () => {
@@ -41,6 +45,12 @@ export default function FormateurDashboard() {
     const token = localStorage.getItem('token');
     const res = await fetch('/api/formateur/stats', { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) setStats(await res.json());
+  };
+
+  const fetchFinancialStats = async () => {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/formateur/stats/financial', { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) setFinancial(await res.json());
   };
 
   const fetchStudents = async (courseId) => {
@@ -115,6 +125,7 @@ export default function FormateurDashboard() {
 
     await fetchCourses();
     await fetchStats();
+    await fetchFinancialStats();
     reset();
     setNewCourseSections([]);
     setThumbnailFile(null);
@@ -182,9 +193,29 @@ export default function FormateurDashboard() {
       <div className="stats-row">
         <div className="stat-card glass">📘 {stats.totalCourses} {t('dashboard.statsCourses')}</div>
         <div className="stat-card glass">👩‍🎓 {stats.totalStudents} {t('dashboard.formateur.totalStudents')}</div>
-        <div className="stat-card glass">📊 {Math.round(stats.avgProgress)}% {t('dashboard.formateur.averageProgress')}</div>
+        {/* Carte Revenus (remplace Progression moyenne) */}
+        <div className="stat-card glass border-success" style={{ borderLeft: '4px solid #28a745' }}>
+          <h5><FaMoneyBillWave className="me-2" /> Vos revenus</h5>
+          <div className="mt-2">
+            <div className="d-flex justify-content-between">
+              <span>Brut</span>
+              <strong>{financial.gross.toFixed(2)} DT</strong>
+            </div>
+            <div className="d-flex justify-content-between text-muted small">
+              <span>Commission ({COMMISSION_RATE * 100}%)</span>
+              <span>-{financial.commission.toFixed(2)} DT</span>
+            </div>
+            <hr className="my-1" />
+            <div className="d-flex justify-content-between fs-5 fw-bold text-success">
+              <span>Net (votre gain)</span>
+              <span>{financial.net.toFixed(2)} DT</span>
+            </div>
+          </div>
+          <small className="text-muted">Basé sur les inscriptions</small>
+        </div>
       </div>
 
+      {/* Le reste du composant (création de cours, liste, quiz) est inchangé */}
       <div className="glass create-course">
         <h2>{t('dashboard.formateur.createCourse')}</h2>
         <form onSubmit={handleSubmit(onCreateCourse)}>

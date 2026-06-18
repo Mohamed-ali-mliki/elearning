@@ -8,6 +8,7 @@ import './AdminDashboard.css';
 import { FaUsers, FaBookOpen, FaMoneyBillWave, FaUserPlus, FaEdit, FaTrashAlt, FaEye, FaCheck, FaSyncAlt, FaEnvelope, FaTimes } from 'react-icons/fa';
 import { MdOutlineMarkEmailUnread } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
+import { COMMISSION_RATE } from '../../../config/constants';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -18,6 +19,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [pendingCourses, setPendingCourses] = useState([]);
   const [stats, setStats] = useState({ totalUsers: 0, totalCourses: 0, totalRevenue: 0 });
+  const [financial, setFinancial] = useState({ totalSales: 0, adminRevenue: 0, formateurTotal: 0 });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -39,6 +41,7 @@ export default function AdminDashboard() {
     if (token) {
       fetchData();
       fetchMessages();
+      fetchFinancialStats();
     }
   }, [token]);
 
@@ -60,6 +63,16 @@ export default function AdminDashboard() {
     } catch (err) {
       setError(err.response?.data?.message || err.message);
       setTimeout(() => setError(''), 4000);
+    }
+  };
+
+  const fetchFinancialStats = async () => {
+    try {
+      const res = await axios.get('/api/admin/stats/financial', { headers: { Authorization: `Bearer ${token}` } });
+      setFinancial(res.data);
+      setStats(prev => ({ ...prev, totalRevenue: res.data.adminRevenue }));
+    } catch (err) {
+      console.error('Erreur chargement financier', err);
     }
   };
 
@@ -226,7 +239,30 @@ export default function AdminDashboard() {
       <div className="stats-row">
         <div className="stat-card glass"><FaUsers className="me-2" /> {stats.totalUsers} {t('dashboard.statsUsers')}</div>
         <div className="stat-card glass"><FaBookOpen className="me-2" /> {stats.totalCourses} {t('dashboard.admin.pendingCourses')}</div>
-        <div className="stat-card glass"><FaMoneyBillWave className="me-2" /> {stats.totalRevenue} DT {t('dashboard.admin.revenue')}</div>
+        {/* Carte Revenus améliorée - sans doublon */}
+        <div className="stat-card glass border-primary" style={{ borderLeft: '4px solid #0d6efd' }}>
+          <h5><FaMoneyBillWave className="me-2" /> Revenus de la plateforme</h5>
+          <div className="mt-2">
+            <div className="d-flex justify-content-between">
+              <span>Volume global des ventes</span>
+              <strong>{financial.totalSales.toFixed(2)} DT</strong>
+            </div>
+            <div className="d-flex justify-content-between text-primary fw-bold">
+              <span>Revenu net admin ({COMMISSION_RATE * 100}%)</span>
+              <span>{financial.adminRevenue.toFixed(2)} DT</span>
+            </div>
+            <div className="d-flex justify-content-between text-muted small">
+              <span>Total à reverser aux formateurs ({(1 - COMMISSION_RATE) * 100}%)</span>
+              <span>{financial.formateurTotal.toFixed(2)} DT</span>
+            </div>
+            <hr className="my-1" />
+            <div className="d-flex justify-content-between fs-5 fw-bold text-primary">
+              <span>Revenu net admin</span>
+              <span>{financial.adminRevenue.toFixed(2)} DT</span>
+            </div>
+          </div>
+          <small className="text-muted">Basé sur toutes les ventes de cours approuvés</small>
+        </div>
       </div>
 
       <ul className="nav nav-tabs mb-4">

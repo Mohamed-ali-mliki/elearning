@@ -1,0 +1,1 @@
+export const COMMISSION_RATE = 0.20; // 20% pour la plateforme
