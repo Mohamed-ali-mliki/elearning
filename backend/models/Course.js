@@ -2,11 +2,12 @@ const mongoose = require('mongoose');
 
 const sectionSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  type: { type: String, enum: ['video', 'pdf'], required: true },
-  contentUrl: { type: String, required: true },
+  // ❌ supprimer type et contentUrl
+  videoUrl: { type: String, default: '' },   // chemin vers la vidéo (MP4)
+  pdfUrl: { type: String, default: '' },     // chemin vers le PDF
   duration: { type: Number, default: 0 },
   quizId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' },
-  quizRequired: { type: Boolean, default: true }   // ✅ champ ajouté
+  quizRequired: { type: Boolean, default: true }
 });
 
 const courseSchema = new mongoose.Schema({

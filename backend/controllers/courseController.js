@@ -41,17 +41,33 @@ exports.addThumbnail = async (req, res) => {
   }
 };
 
-// Ajouter une section à un cours
+// ✅ MODIFICATION : Ajouter une section avec vidéo et/ou PDF
 exports.addSection = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { title, type } = req.body;
-    const contentUrl = req.file ? req.file.path.replace(/\\/g, '/') : '';
+    const { title } = req.body;
 
+    // Vérifier que le cours existe et appartient au formateur
     const course = await Course.findOne({ _id: courseId, formateur: req.user.id });
     if (!course) return res.status(404).json({ message: 'Cours non trouvé' });
 
-    course.sections.push({ title, type, contentUrl });
+    // Récupérer les fichiers uploadés (via multer fields)
+    const videoFile = req.files?.video ? req.files.video[0] : null;
+    const pdfFile = req.files?.pdf ? req.files.pdf[0] : null;
+
+    // Construire la nouvelle section
+    const newSection = {
+      title,
+      videoUrl: videoFile ? videoFile.path.replace(/\\/g, '/') : '',
+      pdfUrl: pdfFile ? pdfFile.path.replace(/\\/g, '/') : '',
+    };
+
+    // Optionnel : vérifier qu'au moins un fichier est fourni (sinon, on peut bloquer)
+    // if (!videoFile && !pdfFile) {
+    //   return res.status(400).json({ message: 'Au moins un fichier (vidéo ou PDF) est requis.' });
+    // }
+
+    course.sections.push(newSection);
     await course.save();
     res.status(201).json(course);
   } catch (err) {

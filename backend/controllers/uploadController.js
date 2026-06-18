@@ -10,11 +10,9 @@ const storage = multer.diskStorage({
     else if (file.mimetype === 'application/pdf') folder += 'pdfs';
     else folder += 'others';
 
-    // Créer le dossier s'il n'existe pas
     if (!fs.existsSync(folder)) {
       fs.mkdirSync(folder, { recursive: true });
     }
-
     cb(null, folder);
   },
   filename: (req, file, cb) => {
@@ -30,5 +28,10 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 100 * 1024 * 1024 } });
+
+// Pour un seul fichier (ex: thumbnail)
 const uploadSingle = (fieldName) => upload.single(fieldName);
-module.exports = { uploadSingle };
+// Pour deux champs (video et pdf) dans la même requête
+const uploadFields = upload.fields([{ name: 'video', maxCount: 1 }, { name: 'pdf', maxCount: 1 }]);
+
+module.exports = { uploadSingle, uploadFields };

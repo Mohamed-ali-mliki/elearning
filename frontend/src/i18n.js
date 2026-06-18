@@ -1118,6 +1118,16 @@ const resources = {
         add: 'إضافة',
         date: 'التاريخ',
       },
+  "watch": {
+    "noContent": "Aucun contenu disponible pour cette section.",
+    "noSections": "Ce cours ne contient pas encore de sections.",
+    "sections": "Sections",
+    "markComplete": "Marquer comme terminée",
+    "completed": "Section terminée",
+    "quizRequiredMsg": "Vous devez réussir le quiz avant de valider cette section.",
+    "scoreSuccess": "Félicitations, vous avez réussi le quiz !"
+  }
+
     },
   },
 };

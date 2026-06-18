@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { COMMISSION_RATE } from '../../../config/constants';
+import { COMMISSION_RATE, CATEGORIES } from '../../../config/constants';
 import { FaMoneyBillWave } from 'react-icons/fa';
 import './FormateurDashboard.css';
 
@@ -17,14 +17,21 @@ export default function FormateurDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // État pour la création d'un nouveau cours
   const [newCourseSections, setNewCourseSections] = useState([]);
   const [thumbnailFile, setThumbnailFile] = useState(null);
   
+  // État pour le modal Quiz
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [currentSection, setCurrentSection] = useState(null);
   const [currentCourseId, setCurrentCourseId] = useState(null);
   const [quizQuestions, setQuizQuestions] = useState([]);
   const [quizRequired, setQuizRequired] = useState(true);
+
+  // État pour ajouter une section à un cours existant
+  const [sectionVideoFile, setSectionVideoFile] = useState(null);
+  const [sectionPdfFile, setSectionPdfFile] = useState(null);
+  const [newSectionTitle, setNewSectionTitle] = useState('');
 
   const { register, handleSubmit, reset } = useForm();
 
@@ -34,6 +41,7 @@ export default function FormateurDashboard() {
     fetchFinancialStats();
   }, []);
 
+  // --- Fonctions de récupération (inchangées) ---
   const fetchCourses = async () => {
     const token = localStorage.getItem('token');
     const res = await fetch('/api/formateur/courses', { headers: { Authorization: `Bearer ${token}` } });
@@ -59,8 +67,12 @@ export default function FormateurDashboard() {
     if (res.ok) setStudents(await res.json());
   };
 
+  // --- Gestion des sections pour le nouveau cours (modifié) ---
   const addSectionToNewCourse = () => {
-    setNewCourseSections([...newCourseSections, { title: '', type: 'video', file: null }]);
+    setNewCourseSections([
+      ...newCourseSections,
+      { title: '', videoFile: null, pdfFile: null } // plus de type, deux fichiers
+    ]);
   };
 
   const removeSectionFromNewCourse = (index) => {
@@ -75,19 +87,23 @@ export default function FormateurDashboard() {
     setNewCourseSections(updated);
   };
 
-  const handleSectionFileChange = (index, e) => {
+  const handleSectionVideoChange = (index, e) => {
     const file = e.target.files[0];
-    updateSectionField(index, 'file', file);
+    updateSectionField(index, 'videoFile', file);
   };
 
+  const handleSectionPdfChange = (index, e) => {
+    const file = e.target.files[0];
+    updateSectionField(index, 'pdfFile', file);
+  };
+
+  // --- Création du cours (modifié) ---
   const onCreateCourse = async (data) => {
-    if (newCourseSections.length === 0) {
-      setError(t('dashboard.formateur.noSections'));
-      return;
-    }
+    // 🔹 Les sections sont désormais optionnelles – on ne bloque plus ici
     setLoading(true);
     const token = localStorage.getItem('token');
 
+    // 1. Créer le cours (sans sections)
     const courseRes = await fetch('/api/formateur/courses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -101,6 +117,7 @@ export default function FormateurDashboard() {
     const newCourse = await courseRes.json();
     const courseId = newCourse._id;
 
+    // 2. Ajouter la thumbnail si présente
     if (thumbnailFile) {
       const thumbFormData = new FormData();
       thumbFormData.append('thumbnail', thumbnailFile);
@@ -111,11 +128,16 @@ export default function FormateurDashboard() {
       });
     }
 
+    // 3. Ajouter chaque section (avec vidéo et/ou PDF)
     for (let section of newCourseSections) {
+      // On n'ajoute une section que si au moins un fichier est fourni
+      if (!section.videoFile && !section.pdfFile) continue;
+
       const formData = new FormData();
       formData.append('title', section.title);
-      formData.append('type', section.type);
-      formData.append('file', section.file);
+      if (section.videoFile) formData.append('video', section.videoFile);
+      if (section.pdfFile)   formData.append('pdf', section.pdfFile);
+
       await fetch(`/api/formateur/courses/${courseId}/sections`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -133,17 +155,17 @@ export default function FormateurDashboard() {
     alert(t('dashboard.formateur.courseCreated'));
   };
 
-  const [sectionType, setSectionType] = useState('video');
-  const [sectionFile, setSectionFile] = useState(null);
-  const [newSectionTitle, setNewSectionTitle] = useState('');
-
+  // --- Ajout d'une section à un cours existant (modifié) ---
   const onAddSection = async (courseId) => {
-    if (!sectionFile || !newSectionTitle) return setError(t('dashboard.formateur.titleFileRequired'));
+    if (!newSectionTitle) return setError(t('dashboard.formateur.titleFileRequired'));
+    if (!sectionVideoFile && !sectionPdfFile) return setError(t('dashboard.formateur.atLeastOneFile'));
+
     setLoading(true);
     const formData = new FormData();
-    formData.append('file', sectionFile);
     formData.append('title', newSectionTitle);
-    formData.append('type', sectionType);
+    if (sectionVideoFile) formData.append('video', sectionVideoFile);
+    if (sectionPdfFile)   formData.append('pdf', sectionPdfFile);
+
     const token = localStorage.getItem('token');
     const res = await fetch(`/api/formateur/courses/${courseId}/sections`, {
       method: 'POST',
@@ -153,12 +175,14 @@ export default function FormateurDashboard() {
     if (res.ok) {
       const updated = await res.json();
       setCourses(courses.map(c => c._id === courseId ? updated : c));
-      setSectionFile(null);
+      setSectionVideoFile(null);
+      setSectionPdfFile(null);
       setNewSectionTitle('');
     } else setError(t('common.error'));
     setLoading(false);
   };
 
+  // --- Suppression de section ---
   const deleteSection = async (courseId, sectionId) => {
     if (!confirm(t('common.deleteConfirm'))) return;
     const token = localStorage.getItem('token');
@@ -166,6 +190,7 @@ export default function FormateurDashboard() {
     if (res.ok) fetchCourses();
   };
 
+  // --- Création du quiz (inchangée) ---
   const createQuiz = async (courseId, sectionId) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}`, {
@@ -187,13 +212,14 @@ export default function FormateurDashboard() {
     } else setError(t('common.error'));
   };
 
+  // --- Rendu ---
   return (
     <div className="formateur-dashboard">
       <h1 className="dashboard-title">{t('dashboard.formateur.title')}</h1>
       <div className="stats-row">
         <div className="stat-card glass">📘 {stats.totalCourses} {t('dashboard.statsCourses')}</div>
         <div className="stat-card glass">👩‍🎓 {stats.totalStudents} {t('dashboard.formateur.totalStudents')}</div>
-        {/* Carte Revenus (remplace Progression moyenne) */}
+        {/* Carte Revenus */}
         <div className="stat-card glass border-success" style={{ borderLeft: '4px solid #28a745' }}>
           <h5><FaMoneyBillWave className="me-2" /> Vos revenus</h5>
           <div className="mt-2">
@@ -215,21 +241,30 @@ export default function FormateurDashboard() {
         </div>
       </div>
 
-      {/* Le reste du composant (création de cours, liste, quiz) est inchangé */}
+      {/* Formulaire de création de cours */}
       <div className="glass create-course">
         <h2>{t('dashboard.formateur.createCourse')}</h2>
         <form onSubmit={handleSubmit(onCreateCourse)}>
           <input {...register('title')} placeholder={t('courseDetail.overview')} required />
           <textarea {...register('description')} placeholder={t('courseDetail.overview')} required />
-          <input {...register('category')} placeholder={t('courses.category')} />
-          <input {...register('price')} type="number" placeholder={`${t('courseDetail.price')} (DT)`} />
           
+          {/* 🔹 Catégorie : liste déroulante */}
+          <select {...register('category')} className="form-select mb-2">
+            <option value="">Sélectionnez une catégorie</option>
+            {CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+
+          {/* 🔹 Prix : libellé TND */}
+          <input {...register('price')} type="number" step="0.01" placeholder="Prix (TND)" className="form-control mb-2" />
+
           <div className="mb-3">
             <label>{t('dashboard.formateur.thumbnail')}</label>
             <input type="file" accept="image/jpeg,image/png" onChange={e => setThumbnailFile(e.target.files[0])} className="form-control" />
           </div>
 
-          <h4>{t('courseDetail.sections')}</h4>
+          <h4>{t('courseDetail.sections')} (optionnelles)</h4>
           {newCourseSections.map((sec, idx) => (
             <div key={idx} className="section-item card p-2 mb-2">
               <input
@@ -240,25 +275,35 @@ export default function FormateurDashboard() {
                 className="form-control mb-1"
                 required
               />
-              <select
-                value={sec.type}
-                onChange={e => updateSectionField(idx, 'type', e.target.value)}
-                className="form-select mb-1"
-              >
-                <option value="video">{t('courseDetail.sectionVideo')}</option>
-                <option value="pdf">{t('courseDetail.sectionPdf')}</option>
-              </select>
-              <input
-                type="file"
-                accept={sec.type === 'video' ? 'video/mp4' : 'application/pdf'}
-                onChange={e => handleSectionFileChange(idx, e)}
-                className="form-control mb-1"
-                required
-              />
-              <button type="button" className="btn-sm btn-danger" onClick={() => removeSectionFromNewCourse(idx)}>{t('common.delete')}</button>
+              {/* 🔹 Deux champs de fichier : vidéo et PDF */}
+              <div className="row">
+                <div className="col-6">
+                  <label className="form-label small">Vidéo (MP4)</label>
+                  <input
+                    type="file"
+                    accept="video/mp4"
+                    onChange={e => handleSectionVideoChange(idx, e)}
+                    className="form-control"
+                  />
+                </div>
+                <div className="col-6">
+                  <label className="form-label small">PDF</label>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={e => handleSectionPdfChange(idx, e)}
+                    className="form-control"
+                  />
+                </div>
+              </div>
+              <button type="button" className="btn-sm btn-danger mt-2" onClick={() => removeSectionFromNewCourse(idx)}>
+                {t('common.delete')}
+              </button>
             </div>
           ))}
-          <button type="button" className="btn-secondary mb-3" onClick={addSectionToNewCourse}>+ {t('dashboard.formateur.addSection')}</button>
+          <button type="button" className="btn-secondary mb-3" onClick={addSectionToNewCourse}>
+            + {t('dashboard.formateur.addSection')}
+          </button>
 
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? t('common.loading') : t('dashboard.formateur.createCourse')}
@@ -266,6 +311,7 @@ export default function FormateurDashboard() {
         </form>
       </div>
 
+      {/* Liste des cours existants */}
       <div className="courses-list">
         <h2>{t('dashboard.formateur.myCourses')}</h2>
         <div className="courses-grid">
@@ -283,14 +329,18 @@ export default function FormateurDashboard() {
               <h3>{course.title}</h3>
               <p>{course.description?.slice(0, 100)}...</p>
               <p className="status-badge">{course.status}</p>
-              <button onClick={() => { setSelectedCourse(course); fetchStudents(course._id); }} className="btn-outline">{t('dashboard.formateur.viewSections')}</button>
+              <button onClick={() => { setSelectedCourse(course); fetchStudents(course._id); }} className="btn-outline">
+                {t('dashboard.formateur.viewSections')}
+              </button>
               {selectedCourse?._id === course._id && (
                 <div className="course-details">
                   <h4>{t('courseDetail.sections')} :</h4>
                   <ul>
                     {course.sections.map(section => (
                       <li key={section._id}>
-                        {section.title} ({section.type})
+                        {section.title}
+                        {section.videoUrl && <span className="badge bg-info ms-1">🎬 Vidéo</span>}
+                        {section.pdfUrl && <span className="badge bg-warning ms-1">📄 PDF</span>}
                         <button onClick={() => deleteSection(course._id, section._id)} className="btn-sm btn-danger ms-2">🗑️</button>
                         <button 
                           onClick={() => { 
@@ -311,13 +361,18 @@ export default function FormateurDashboard() {
                     ))}
                   </ul>
                   <div className="add-section mt-2">
-                    <input type="text" placeholder={t('dashboard.formateur.sectionTitle')} value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)} />
-                    <select onChange={e => setSectionType(e.target.value)}>
-                      <option value="video">{t('courseDetail.sectionVideo')}</option>
-                      <option value="pdf">{t('courseDetail.sectionPdf')}</option>
-                    </select>
-                    <input type="file" accept={sectionType === 'video' ? 'video/mp4' : 'application/pdf'} onChange={e => setSectionFile(e.target.files[0])} />
-                    <button onClick={() => onAddSection(course._id)} disabled={loading}>{loading ? t('common.loading') : '+ ' + t('dashboard.formateur.addSection')}</button>
+                    <input type="text" placeholder={t('dashboard.formateur.sectionTitle')} value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)} className="form-control mb-1" />
+                    <div className="row">
+                      <div className="col-6">
+                        <input type="file" accept="video/mp4" onChange={e => setSectionVideoFile(e.target.files[0])} className="form-control" />
+                      </div>
+                      <div className="col-6">
+                        <input type="file" accept="application/pdf" onChange={e => setSectionPdfFile(e.target.files[0])} className="form-control" />
+                      </div>
+                    </div>
+                    <button onClick={() => onAddSection(course._id)} disabled={loading} className="btn btn-primary mt-2">
+                      {loading ? t('common.loading') : '+ ' + t('dashboard.formateur.addSection')}
+                    </button>
                   </div>
                   <h4 className="mt-3">{t('dashboard.formateur.totalStudents')} :</h4>
                   <ul>
@@ -330,6 +385,7 @@ export default function FormateurDashboard() {
         </div>
       </div>
 
+      {/* Modal Quiz (inchangé) */}
       {showQuizModal && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg">
