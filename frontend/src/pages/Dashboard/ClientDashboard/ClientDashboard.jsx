@@ -24,6 +24,9 @@ export default function ClientDashboard() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyContent, setReplyContent] = useState('');
 
+  // ✅ MODIF DEPLOIEMENT : utiliser la variable d'environnement
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     fetchData();
     fetchMessages(); // ✅ Charger les messages au montage
@@ -38,13 +41,13 @@ export default function ClientDashboard() {
 
     try {
       const [enrollRes, coursesRes] = await Promise.all([
-        fetch('/api/enrollments/client/enrollments', {
+        fetch(`${API_URL}/api/enrollments/client/enrollments`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }),
-        fetch('/api/courses?status=approved')
+        fetch(`${API_URL}/api/courses?status=approved`)
       ]);
 
       if (!enrollRes.ok) {
@@ -75,7 +78,7 @@ export default function ClientDashboard() {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await fetch('/api/messages/client/messages', {
+      const res = await fetch(`${API_URL}/api/messages/client/messages`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -90,7 +93,7 @@ export default function ClientDashboard() {
   const enrollCourse = async (courseId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`/api/enrollments/${courseId}/buy`, {
+      const res = await fetch(`${API_URL}/api/enrollments/${courseId}/buy`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -112,7 +115,7 @@ export default function ClientDashboard() {
     const token = localStorage.getItem('token');
     setSending(true);
     try {
-      const res = await fetch('/api/messages/messages', {
+      const res = await fetch(`${API_URL}/api/messages/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -145,7 +148,7 @@ export default function ClientDashboard() {
     if (!replyContent.trim()) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`/api/messages/messages/${messageId}/reply`, {
+      const res = await fetch(`${API_URL}/api/messages/messages/${messageId}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +171,7 @@ export default function ClientDashboard() {
   // ✅ Marquer comme lu
   const markAsRead = async (messageId) => {
     const token = localStorage.getItem('token');
-    await fetch(`/api/messages/messages/${messageId}/read`, {
+    await fetch(`${API_URL}/api/messages/messages/${messageId}/read`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -247,7 +250,7 @@ export default function ClientDashboard() {
         {enrolledCourses.map(course => (
           <div key={course._id} className="course-card glass">
             <img
-              src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/default-course.jpg'}
+              src={course.thumbnail ? `${API_URL}/${course.thumbnail}` : '/default-course.jpg'}
               alt={course.title}
               className="course-img"
               onError={(e) => {
@@ -292,7 +295,7 @@ export default function ClientDashboard() {
           .map(course => (
             <div key={course._id} className="course-card glass">
               <img
-                src={course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/default-course.jpg'}
+                src={course.thumbnail ? `${API_URL}/${course.thumbnail}` : '/default-course.jpg'}
                 alt={course.title}
                 className="course-img"
                 onError={(e) => { e.target.onerror = null; e.target.src = '/default-course.jpg'; }}

@@ -15,10 +15,13 @@ const CourseList = () => {
   const [page, setPage] = useState(1);
   const parPage = 6;
 
+  // ✅ MODIF DEPLOIEMENT
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await fetch('/api/courses?status=approved');
+        const res = await fetch(`${API_URL}/api/courses?status=approved`);
         if (!res.ok) throw new Error();
         const data = await res.json();
         setCourses(data);
@@ -103,7 +106,7 @@ const CourseList = () => {
               <div className="course-card h-100">
                 <div className="course-img">
                   <img 
-                    src={c.thumbnail ? `http://localhost:5000/${c.thumbnail}` : '/default-course.jpg'} 
+                    src={c.thumbnail ? `${API_URL}/${c.thumbnail}` : '/default-course.jpg'} 
                     alt={c.title} 
                     onError={(e) => {
                       e.target.onerror = null;

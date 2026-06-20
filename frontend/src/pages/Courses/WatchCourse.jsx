@@ -15,13 +15,14 @@ const WatchCourse = () => {
   const [sectionActuelle, setSectionActuelle] = useState(null);
   const [progression, setProgression] = useState({});
   const [chargement, setChargement] = useState(true);
-
-  // ✅ Nouvel état : exercice soumis ?
   const [exerciseSubmitted, setExerciseSubmitted] = useState(false);
+
+  // ✅ MODIF DEPLOIEMENT
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   const fetchProgression = async () => {
     try {
-      const res = await fetch(`/api/enrollments/client/enrollments`, {
+      const res = await fetch(`${API_URL}/api/enrollments/client/enrollments`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -43,7 +44,7 @@ const WatchCourse = () => {
   useEffect(() => {
     const fetchCourse = async () => {
       try {
-        const res = await fetch(`/api/courses/${courseId}`, {
+        const res = await fetch(`${API_URL}/api/courses/${courseId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -68,15 +69,12 @@ const WatchCourse = () => {
     init();
   }, [courseId, token]);
 
-  // Réinitialiser l'état quand la section change
   useEffect(() => {
     setExerciseSubmitted(false);
   }, [sectionActuelle]);
 
-  // ✅ MODIFICATION : suppression du bouton manuel "Marquer comme terminée"
-  // La progression est désormais automatique via la réussite du quiz (back-end).
   const marquerTermine = async () => {
-    // Ne fait plus rien – conservé pour éviter les erreurs si appelé ailleurs
+    // Rien, progression automatique
   };
 
   const onQuizReussi = () => {
@@ -92,20 +90,17 @@ const WatchCourse = () => {
 
   const renderContent = () => {
     if (!section) return null;
-
     const hasVideo = section.videoUrl && section.videoUrl.trim() !== '';
     const hasPdf = section.pdfUrl && section.pdfUrl.trim() !== '';
-
     if (!hasVideo && !hasPdf) {
       return <p className="text-muted">{t('watch.noContent')}</p>;
     }
-
     return (
       <>
         {hasVideo && (
           <div className="mb-3">
             <video
-              src={`http://localhost:5000/${section.videoUrl}`}
+              src={`${API_URL}/${section.videoUrl}`}
               controls
               className="w-100 rounded"
             />
@@ -114,7 +109,7 @@ const WatchCourse = () => {
         {hasPdf && (
           <div className="mb-3">
             <iframe
-              src={`http://localhost:5000/${section.pdfUrl}`}
+              src={`${API_URL}/${section.pdfUrl}`}
               className="w-100"
               style={{ height: '75vh' }}
               title={section.title}
@@ -133,8 +128,6 @@ const WatchCourse = () => {
             <>
               <h2>{section.title}</h2>
               {renderContent()}
-
-              {/* ✅ Quiz / Exercice */}
               {section.quizId && (
                 <QuizPlayer
                   courseId={courseId}
@@ -145,14 +138,11 @@ const WatchCourse = () => {
                   onExerciseSubmitted={() => setExerciseSubmitted(true)}
                 />
               )}
-
-              {/* ✅ Aucun bouton manuel – la progression est gérée automatiquement */}
               {isExercice && !exerciseSubmitted && !estComplete && (
                 <div className="alert alert-info mt-3">
                   ⏳ Veuillez soumettre l'exercice avant de pouvoir terminer cette section.
                 </div>
               )}
-
               {estComplete && (
                 <div className="alert alert-success mt-3">
                   ✓ {t('watch.completed')}
@@ -176,18 +166,10 @@ const WatchCourse = () => {
               } else {
                 icon = <span className="me-1">📄</span>;
               }
-
               return (
-                <li
-                  key={s._id}
-                  className="list-group-item d-flex justify-content-between align-items-center"
-                >
-                  <button
-                    className="btn btn-link p-0 text-start"
-                    onClick={() => setSectionActuelle(s)}
-                  >
-                    {icon}
-                    {s.title}
+                <li key={s._id} className="list-group-item d-flex justify-content-between align-items-center">
+                  <button className="btn btn-link p-0 text-start" onClick={() => setSectionActuelle(s)}>
+                    {icon}{s.title}
                   </button>
                   {progression[s._id] && <FaCheckCircle className="text-success" />}
                 </li>

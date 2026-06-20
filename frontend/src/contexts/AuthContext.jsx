@@ -7,6 +7,9 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
+  // ✅ MODIF DEPLOIEMENT
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
@@ -18,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -40,13 +43,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (fullName, email, password) => {
-    const res = await fetch('/api/auth/register', {
+    const res = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fullName, email, password }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Erreur d\'inscription');
+    if (!res.ok) throw new Error(data.message || "Erreur d'inscription");
     
     const userData = {
       id: data._id,

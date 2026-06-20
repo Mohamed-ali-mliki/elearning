@@ -8,12 +8,14 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete, onExerciseSu
   const [submitted, setSubmitted] = useState(false);
   const isExercice = quiz.type === 'exercice';
 
-  useEffect(() => {
-    if (isExercice) return; // Pas de score pour les exercices
+  // ✅ MODIF DEPLOIEMENT
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+  useEffect(() => {
+    if (isExercice) return;
     const fetchScore = async () => {
       try {
-        const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}/score`, {
+        const res = await fetch(`${API_URL}/api/quizzes/course/${courseId}/section/${sectionId}/score`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -39,7 +41,7 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete, onExerciseSu
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}/submit`, {
+      const res = await fetch(`${API_URL}/api/quizzes/course/${courseId}/section/${sectionId}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -52,7 +54,6 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete, onExerciseSu
       if (isExercice) {
         setSubmitted(true);
         alert(result.message || 'Exercice soumis avec succès. En attente de correction.');
-        // ✅ Avertir le parent que l'exercice est soumis
         onExerciseSubmitted && onExerciseSubmitted();
       } else {
         setScore(result.score);
@@ -73,7 +74,6 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete, onExerciseSu
   if (alreadyPassed) {
     return <div className="alert alert-success">✅ Quiz déjà réussi. Vous pouvez marquer la section comme terminée.</div>;
   }
-
   if (isExercice && submitted) {
     return <div className="alert alert-info">📤 Votre exercice a été soumis. Vous recevrez la correction par message.</div>;
   }
@@ -114,7 +114,7 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete, onExerciseSu
           </div>
         ))}
         <button className="btn btn-success" onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Envoi...' : isExercice ? 'Soumettre l\'exercice' : 'Soumettre le quiz'}
+          {loading ? 'Envoi...' : isExercice ? "Soumettre l'exercice" : 'Soumettre le quiz'}
         </button>
         {!isExercice && score !== null && (
           <div className={`alert mt-3 ${score >= (quiz.passingScore || 70) ? 'alert-success' : 'alert-danger'}`}>

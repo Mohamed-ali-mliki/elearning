@@ -14,15 +14,18 @@ const CourseDetail = () => {
   const [inscrit, setInscrit] = useState(false);
   const [erreur, setErreur] = useState('');
 
+  // ✅ MODIF DEPLOIEMENT
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(`/api/courses/${id}`);
+        const res = await fetch(`${API_URL}/api/courses/${id}`);
         if (!res.ok) throw new Error();
         const data = await res.json();
         setCourse(data);
         if (token) {
-          const check = await fetch(`/api/enrollments/check/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+          const check = await fetch(`${API_URL}/api/enrollments/check/${id}`, { headers: { Authorization: `Bearer ${token}` } });
           if (check.ok) {
             const { enrolled } = await check.json();
             setInscrit(enrolled);
@@ -40,7 +43,7 @@ const CourseDetail = () => {
   const handleInscription = async () => {
     if (!token) { alert(t('auth.loginRequired')); return; }
     try {
-      const res = await fetch(`/api/enrollments/${id}/buy`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_URL}/api/enrollments/${id}/buy`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         setInscrit(true);
         alert(t('courseDetail.enrollSuccess') || 'Inscription réussie ! Bon apprentissage.');
@@ -61,7 +64,7 @@ const CourseDetail = () => {
 
   return (
     <div>
-      <div className="course-hero" style={{ backgroundImage: `url(${course.thumbnail ? `http://localhost:5000/${course.thumbnail}` : '/img/course-1.jpg'})` }}>
+      <div className="course-hero" style={{ backgroundImage: `url(${course.thumbnail ? `${API_URL}/${course.thumbnail}` : '/img/course-1.jpg'})` }}>
         <div className="overlay-dark"></div>
         <div className="container h-100 d-flex align-items-center">
           <div className="text-white">
