@@ -179,32 +179,7 @@ export default function FormateurDashboard() {
     if (res.ok) fetchCourses();
   };
 
-  const createQuiz = async (courseId, sectionId) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        title: `Activité : ${currentSection.title}`,
-        type: activityType,
-        instructions: quizInstructions,
-        questions: quizQuestions,
-        passingScore: activityType === 'quiz' ? 70 : 0,
-        quizRequired: quizRequired
-      })
-    });
-    if (res.ok) {
-      alert(t('dashboard.formateur.quizCreated'));
-      setShowQuizModal(false);
-      setQuizQuestions([]);
-      setQuizRequired(true);
-      setActivityType('quiz');
-      setQuizInstructions('');
-      fetchCourses();
-    } else setError(t('common.error'));
-  };
-
-  // Fonctions pour gérer les options des questions
+  // --- Fonctions pour gérer les questions du modal ---
   const addOptionToQuestion = (qIndex) => {
     const updated = [...quizQuestions];
     updated[qIndex].options.push('');
@@ -214,11 +189,9 @@ export default function FormateurDashboard() {
   const removeOptionFromQuestion = (qIndex, optIndex) => {
     const updated = [...quizQuestions];
     updated[qIndex].options.splice(optIndex, 1);
-    // Si l'option supprimée était la bonne réponse, on la réinitialise
     if (updated[qIndex].correctAnswer === optIndex.toString()) {
       updated[qIndex].correctAnswer = '';
     } else if (parseInt(updated[qIndex].correctAnswer) > optIndex) {
-      // Décrémenter l'index si la bonne réponse est après l'option supprimée
       updated[qIndex].correctAnswer = (parseInt(updated[qIndex].correctAnswer) - 1).toString();
     }
     setQuizQuestions(updated);
@@ -245,6 +218,64 @@ export default function FormateurDashboard() {
       points: activityType === 'quiz' ? 1 : 0
     };
     setQuizQuestions([...quizQuestions, newQuestion]);
+  };
+
+  // --- Fonction améliorée pour créer le quiz/exercice avec validation ---
+  const createQuiz = async (courseId, sectionId) => {
+    // Validation côté front
+    if (quizQuestions.length === 0) {
+      alert('Veuillez ajouter au moins une question.');
+      return;
+    }
+    const hasEmptyText = quizQuestions.some(q => !q.questionText || q.questionText.trim() === '');
+    if (hasEmptyText) {
+      alert('Chaque question doit avoir un texte.');
+      return;
+    }
+    if (activityType === 'quiz') {
+      const invalidQCM = quizQuestions.some(q => {
+        if (q.type === 'multiple_choice') {
+          const emptyOpt = q.options.some(opt => opt.trim() === '');
+          return emptyOpt || !q.correctAnswer;
+        }
+        return false;
+      });
+      if (invalidQCM) {
+        alert('Pour chaque QCM, remplissez toutes les options et sélectionnez une bonne réponse.');
+        return;
+      }
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: `Activité : ${currentSection.title}`,
+          type: activityType,
+          instructions: quizInstructions,
+          questions: quizQuestions,
+          passingScore: activityType === 'quiz' ? 70 : 0,
+          quizRequired: quizRequired
+        })
+      });
+      if (res.ok) {
+        alert(t('dashboard.formateur.quizCreated'));
+        setShowQuizModal(false);
+        setQuizQuestions([]);
+        setQuizRequired(true);
+        setActivityType('quiz');
+        setQuizInstructions('');
+        fetchCourses();
+      } else {
+        const errorData = await res.json();
+        alert(errorData.message || t('common.error'));
+        setError(t('common.error'));
+      }
+    } catch (err) {
+      alert('Erreur réseau : ' + err.message);
+    }
   };
 
   // ---------- RENDU ----------
@@ -500,24 +531,22 @@ export default function FormateurDashboard() {
       {activeTab === 'messages' && <MessagesTab />}
       {activeTab === 'corrections' && <CorrectionsTab />}
 
-      {/* ✅ Modal de création avec interface améliorée */}
+      {/* ✅ MODAL REFONDU – plus clair et structuré */}
       {showQuizModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5>
-                  {activityType === 'quiz' ? '📝 Ajouter un quiz' : '📓 Ajouter un exercice'} – {currentSection?.title}
+                <h5 className="modal-title">
+                  {activityType === 'quiz' ? '📝 Ajouter un quiz' : '📓 Ajouter un exercice'}
+                  {currentSection && <span className="text-muted ms-2">— {currentSection.title}</span>}
                 </h5>
-                <button
-                  className="btn-close"
-                  onClick={() => {
-                    setShowQuizModal(false);
-                    setActivityType('quiz');
-                    setQuizInstructions('');
-                    setQuizQuestions([]);
-                  }}
-                ></button>
+                <button type="button" className="btn-close" onClick={() => {
+                  setShowQuizModal(false);
+                  setActivityType('quiz');
+                  setQuizInstructions('');
+                  setQuizQuestions([]);
+                }} />
               </div>
               <div className="modal-body">
                 {/* Consignes pour exercice */}
@@ -534,12 +563,12 @@ export default function FormateurDashboard() {
                   </div>
                 )}
 
-                {/* Quiz obligatoire (pour quiz uniquement) */}
+                {/* Quiz obligatoire (quiz uniquement) */}
                 {activityType === 'quiz' && (
-                  <div className="mb-3 form-check">
+                  <div className="form-check mb-3">
                     <input
-                      type="checkbox"
                       className="form-check-input"
+                      type="checkbox"
                       id="quizRequiredCheckbox"
                       checked={quizRequired}
                       onChange={(e) => setQuizRequired(e.target.checked)}
@@ -551,156 +580,175 @@ export default function FormateurDashboard() {
                 )}
 
                 {/* Liste des questions */}
-                {quizQuestions.map((q, qIdx) => (
-                  <div key={qIdx} className="border p-3 mb-3 rounded">
-                    <div className="d-flex justify-content-between align-items-start mb-2">
-                      <h6 className="mb-0">Question {qIdx+1}</h6>
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => setQuizQuestions(quizQuestions.filter((_, i) => i !== qIdx))}
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
+                <div className="mb-3">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h6 className="mb-0">Questions ({quizQuestions.length})</h6>
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={addQuestion}>
+                      <FaPlus className="me-1" /> {t('dashboard.formateur.addQuestion')}
+                    </button>
+                  </div>
 
-                    {/* Champ question */}
-                    <input
-                      type="text"
-                      className="form-control mb-2"
-                      placeholder="Texte de la question"
-                      value={q.questionText}
-                      onChange={e => {
-                        const updated = [...quizQuestions];
-                        updated[qIdx].questionText = e.target.value;
-                        setQuizQuestions(updated);
-                      }}
-                      required
-                    />
+                  {quizQuestions.length === 0 && (
+                    <p className="text-muted">Aucune question. Cliquez sur "Ajouter une question".</p>
+                  )}
 
-                    {/* Pour les quiz, choix du type de question */}
-                    {activityType === 'quiz' && (
-                      <div className="mb-2">
-                        <select
-                          className="form-select"
-                          value={q.type}
-                          onChange={e => {
+                  {quizQuestions.map((q, qIdx) => (
+                    <div key={qIdx} className="card mb-3 p-3 border">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <strong>Question {qIdx + 1}</strong>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => {
                             const updated = [...quizQuestions];
-                            updated[qIdx].type = e.target.value;
-                            if (e.target.value === 'open') {
-                              updated[qIdx].options = [];
-                              updated[qIdx].correctAnswer = '';
-                            } else {
-                              updated[qIdx].options = [''];
-                            }
+                            updated.splice(qIdx, 1);
                             setQuizQuestions(updated);
                           }}
                         >
-                          <option value="multiple_choice">QCM (choix unique)</option>
-                          <option value="open">Question ouverte</option>
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Si c'est un exercice, on force "open" */}
-                    {activityType === 'exercice' && (
-                      <div className="text-muted small mb-2">Question ouverte (sans auto‑correction)</div>
-                    )}
-
-                    {/* Gestion des options pour QCM */}
-                    {q.type === 'multiple_choice' && activityType === 'quiz' && (
-                      <div className="mb-2">
-                        <label className="form-label">Options</label>
-                        {q.options.map((opt, optIdx) => (
-                          <div key={optIdx} className="input-group mb-1">
-                            <input
-                              type="text"
-                              className="form-control"
-                              placeholder={`Option ${optIdx+1}`}
-                              value={opt}
-                              onChange={e => updateOptionText(qIdx, optIdx, e.target.value)}
-                            />
-                            <button
-                              className="btn btn-outline-danger"
-                              type="button"
-                              onClick={() => removeOptionFromQuestion(qIdx, optIdx)}
-                              disabled={q.options.length <= 1}
-                            >
-                              <FaTrash size={12} />
-                            </button>
-                          </div>
-                        ))}
-                        <button
-                          className="btn btn-sm btn-outline-secondary mt-1"
-                          onClick={() => addOptionToQuestion(qIdx)}
-                        >
-                          <FaPlus className="me-1" /> Ajouter une option
+                          <FaTrash />
                         </button>
                       </div>
-                    )}
 
-                    {/* Sélection de la bonne réponse pour QCM */}
-                    {q.type === 'multiple_choice' && activityType === 'quiz' && q.options.length > 0 && (
-                      <div className="mb-2">
-                        <label className="form-label">Bonne réponse</label>
-                        <select
-                          className="form-select"
-                          value={q.correctAnswer}
-                          onChange={e => updateCorrectAnswer(qIdx, e.target.value)}
-                        >
-                          <option value="">-- Sélectionnez --</option>
-                          {q.options.map((opt, idx) => (
-                            <option key={idx} value={idx.toString()}>{opt || `Option ${idx+1}`}</option>
+                      {/* Texte de la question */}
+                      <input
+                        type="text"
+                        className="form-control mt-2 mb-2"
+                        placeholder="Texte de la question"
+                        value={q.questionText}
+                        onChange={(e) => {
+                          const updated = [...quizQuestions];
+                          updated[qIdx].questionText = e.target.value;
+                          setQuizQuestions(updated);
+                        }}
+                        required
+                      />
+
+                      {/* Choix du type (seulement pour quiz) */}
+                      {activityType === 'quiz' && (
+                        <div className="mb-2">
+                          <label className="form-label">Type</label>
+                          <select
+                            className="form-select"
+                            value={q.type}
+                            onChange={(e) => {
+                              const updated = [...quizQuestions];
+                              updated[qIdx].type = e.target.value;
+                              if (e.target.value === 'multiple_choice') {
+                                updated[qIdx].options = updated[qIdx].options.length ? updated[qIdx].options : [''];
+                              } else {
+                                updated[qIdx].options = [];
+                                updated[qIdx].correctAnswer = '';
+                              }
+                              setQuizQuestions(updated);
+                            }}
+                          >
+                            <option value="multiple_choice">QCM</option>
+                            <option value="open">Ouverte</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Options pour QCM */}
+                      {q.type === 'multiple_choice' && activityType === 'quiz' && (
+                        <div className="mb-2">
+                          <label className="form-label">Options</label>
+                          {q.options.map((opt, optIdx) => (
+                            <div className="input-group mb-1" key={optIdx}>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder={`Option ${optIdx + 1}`}
+                                value={opt}
+                                onChange={(e) => {
+                                  const updated = [...quizQuestions];
+                                  updated[qIdx].options[optIdx] = e.target.value;
+                                  setQuizQuestions(updated);
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-outline-danger"
+                                onClick={() => removeOptionFromQuestion(qIdx, optIdx)}
+                                disabled={q.options.length <= 1}
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
                           ))}
-                        </select>
-                      </div>
-                    )}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary mt-1"
+                            onClick={() => addOptionToQuestion(qIdx)}
+                          >
+                            + Ajouter une option
+                          </button>
+                        </div>
+                      )}
 
-                    {/* Pour les questions ouvertes, on peut laisser un champ de réponse correcte (optionnel) */}
-                    {(q.type === 'open' || activityType === 'exercice') && (
-                      <div className="mb-2">
-                        <label className="form-label">Réponse attendue (optionnelle, pour aider à la correction)</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Indice de réponse..."
-                          value={q.correctAnswer || ''}
-                          onChange={e => {
-                            const updated = [...quizQuestions];
-                            updated[qIdx].correctAnswer = e.target.value;
-                            setQuizQuestions(updated);
-                          }}
-                        />
-                      </div>
-                    )}
+                      {/* Bonne réponse pour QCM */}
+                      {q.type === 'multiple_choice' && activityType === 'quiz' && q.options.length > 0 && (
+                        <div className="mb-2">
+                          <label className="form-label">Bonne réponse</label>
+                          <select
+                            className="form-select"
+                            value={q.correctAnswer}
+                            onChange={(e) => {
+                              const updated = [...quizQuestions];
+                              updated[qIdx].correctAnswer = e.target.value;
+                              setQuizQuestions(updated);
+                            }}
+                          >
+                            <option value="">-- Sélectionnez --</option>
+                            {q.options.map((opt, idx) => (
+                              <option key={idx} value={idx.toString()}>{opt || `Option ${idx + 1}`}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
 
-                    {/* Points (pour quiz uniquement) */}
-                    {activityType === 'quiz' && (
-                      <div className="mb-1">
-                        <label className="form-label">Points</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          min="0"
-                          step="0.5"
-                          value={q.points || 1}
-                          onChange={e => {
-                            const updated = [...quizQuestions];
-                            updated[qIdx].points = parseFloat(e.target.value) || 1;
-                            setQuizQuestions(updated);
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      {/* Réponse attendue (optionnel) pour question ouverte */}
+                      {(q.type === 'open' || activityType === 'exercice') && (
+                        <div className="mb-2">
+                          <label className="form-label">Réponse attendue (optionnelle)</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Indice pour la correction"
+                            value={q.correctAnswer || ''}
+                            onChange={(e) => {
+                              const updated = [...quizQuestions];
+                              updated[qIdx].correctAnswer = e.target.value;
+                              setQuizQuestions(updated);
+                            }}
+                          />
+                        </div>
+                      )}
 
-                {/* Bouton ajouter question */}
-                <button className="btn btn-secondary" onClick={addQuestion}>
-                  <FaPlus className="me-1" /> {t('dashboard.formateur.addQuestion')}
-                </button>
+                      {/* Points (pour quiz uniquement) */}
+                      {activityType === 'quiz' && (
+                        <div className="mb-2">
+                          <label className="form-label">Points</label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            min="0"
+                            step="0.5"
+                            value={q.points || 1}
+                            onChange={(e) => {
+                              const updated = [...quizQuestions];
+                              updated[qIdx].points = parseFloat(e.target.value) || 1;
+                              setQuizQuestions(updated);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="modal-footer">
                 <button
+                  type="button"
                   className="btn btn-secondary"
                   onClick={() => {
                     setShowQuizModal(false);
@@ -712,6 +760,7 @@ export default function FormateurDashboard() {
                   {t('common.cancel')}
                 </button>
                 <button
+                  type="button"
                   className="btn btn-primary"
                   onClick={() => createQuiz(currentCourseId, currentSection._id)}
                 >

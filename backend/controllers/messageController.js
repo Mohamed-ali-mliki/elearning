@@ -14,6 +14,20 @@ exports.getFormateurMessages = async (req, res) => {
   }
 };
 
+// ✅ NOUVEAU : Récupérer les messages reçus par le client connecté
+exports.getClientMessages = async (req, res) => {
+  try {
+    const messages = await Message.find({ receiver: req.user.id })
+      .populate('sender', 'fullName email')
+      .populate('receiver', 'fullName email')
+      .populate('courseId', 'title')
+      .sort({ createdAt: -1 });
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Envoyer un message (étudiant → formateur)
 exports.sendMessage = async (req, res) => {
   try {

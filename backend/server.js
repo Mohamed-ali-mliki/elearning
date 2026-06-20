@@ -9,7 +9,8 @@ const courseRoutes = require('./routes/courseRoutes');
 const enrollmentRoutes = require('./routes/enrollmentRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const messageRoutes = require('./routes/messageRoutes');   // ← AJOUT
+const messageRoutes = require('./routes/messageRoutes');        // déjà présent
+const submissionRoutes = require('./routes/submissionRoutes'); // ← AJOUT important
 
 connectDB();
 
@@ -25,7 +26,12 @@ app.use('/api', courseRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api', messageRoutes);   // ← AJOUT (définit /contact et /admin/messages...)
+
+// ✅ Montage corrigé : préfixe /api/messages pour correspondre aux appels frontend
+app.use('/api/messages', messageRoutes);   // avant : app.use('/api', messageRoutes);
+
+// ✅ Montage de la nouvelle route submissions
+app.use('/api/submissions', submissionRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

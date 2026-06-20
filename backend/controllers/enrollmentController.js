@@ -29,12 +29,22 @@ exports.buyCourse = async (req, res) => {
 // 2. Récupérer tous les cours auxquels l'étudiant est inscrit
 exports.getMyEnrollments = async (req, res) => {
   try {
-    const enrollments = await Enrollment.find({ userId: req.user.id }).populate('courseId');
+    // ✅ CORRECTION : on peuple le formateur pour le bouton "Contacter"
+    const enrollments = await Enrollment.find({ userId: req.user.id })
+      .populate({
+        path: 'courseId',
+        populate: {
+          path: 'formateur',
+          select: 'fullName email _id'
+        }
+      });
+
     const courses = enrollments
       .filter(e => e.courseId !== null)
       .map(e => e.courseId);
     res.json(courses);
   } catch (err) {
+    console.error('Erreur getMyEnrollments:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -60,12 +70,10 @@ exports.updateProgress = async (req, res) => {
     let enrollment = await Enrollment.findOne({ userId, courseId });
     if (!enrollment) return res.status(404).json({ message: 'Inscription non trouvée' });
 
-    // Récupérer le cours et la section concernée avec le quiz peuplé
     const course = await Course.findById(courseId).populate('sections.quizId');
     const section = course.sections.id(sectionId);
     if (!section) return res.status(404).json({ message: 'Section introuvable' });
 
-    // Vérifier si un quiz est associé et obligatoire
     let quizPassed = true;
     if (section.quizId && section.quizRequired) {
       const quizScore = enrollment.quizScores.find(qs => qs.quizId.toString() === section.quizId._id.toString());
@@ -76,7 +84,6 @@ exports.updateProgress = async (req, res) => {
       }
     }
 
-    // Mise à jour de sectionProgress (tableau d'objets)
     const existing = enrollment.sectionProgress.find(sp => sp.sectionId.toString() === sectionId);
     if (existing) {
       existing.completed = completed;
@@ -85,7 +92,6 @@ exports.updateProgress = async (req, res) => {
       enrollment.sectionProgress.push({ sectionId, completed, completedAt: completed ? new Date() : null });
     }
 
-    // Recalcul du progrès global
     const totalSections = course.sections.length;
     const completedSections = enrollment.sectionProgress.filter(sp => sp.completed).length;
     enrollment.progress = totalSections > 0 ? (completedSections / totalSections) * 100 : 0;

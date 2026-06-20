@@ -1,23 +1,34 @@
-// frontend/src/components/QuizPlayer.jsx
 import { useState, useEffect } from 'react';
-import { submitQuiz, getQuizScore } from '../services/quizService';
 
-const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete }) => {
+const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete, onExerciseSubmitted }) => {
   const [answers, setAnswers] = useState([]);
   const [score, setScore] = useState(null);
   const [loading, setLoading] = useState(false);
   const [alreadyPassed, setAlreadyPassed] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const isExercice = quiz.type === 'exercice';
 
   useEffect(() => {
+    if (isExercice) return; // Pas de score pour les exercices
+
     const fetchScore = async () => {
-      const data = await getQuizScore(courseId, sectionId, token);
-      if (data.score && data.score >= (quiz.passingScore || 70)) {
-        setAlreadyPassed(true);
-        onComplete && onComplete();
+      try {
+        const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}/score`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.score !== null && data.score >= (quiz.passingScore || 70)) {
+            setAlreadyPassed(true);
+            onComplete && onComplete();
+          }
+        }
+      } catch (err) {
+        console.error(err);
       }
     };
     fetchScore();
-  }, []);
+  }, [courseId, sectionId, quiz.passingScore, token, onComplete, isExercice]);
 
   const handleAnswerChange = (qIndex, value) => {
     const newAnswers = [...answers];
@@ -28,13 +39,29 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete }) => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const result = await submitQuiz(courseId, sectionId, answers, token);
-      setScore(result.score);
-      if (result.passed) {
-        alert('Quiz réussi ! Vous pouvez valider la section.');
-        onComplete && onComplete();
+      const res = await fetch(`/api/quizzes/course/${courseId}/section/${sectionId}/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ answers })
+      });
+      const result = await res.json();
+
+      if (isExercice) {
+        setSubmitted(true);
+        alert(result.message || 'Exercice soumis avec succès. En attente de correction.');
+        // ✅ Avertir le parent que l'exercice est soumis
+        onExerciseSubmitted && onExerciseSubmitted();
       } else {
-        alert(`Score : ${result.score}% - ${result.message}`);
+        setScore(result.score);
+        if (result.passed) {
+          alert('Quiz réussi ! Vous pouvez valider la section.');
+          onComplete && onComplete();
+        } else {
+          alert(`Score : ${result.score}% - ${result.message}`);
+        }
       }
     } catch (err) {
       alert('Erreur lors de la soumission');
@@ -47,6 +74,10 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete }) => {
     return <div className="alert alert-success">✅ Quiz déjà réussi. Vous pouvez marquer la section comme terminée.</div>;
   }
 
+  if (isExercice && submitted) {
+    return <div className="alert alert-info">📤 Votre exercice a été soumis. Vous recevrez la correction par message.</div>;
+  }
+
   return (
     <div className="card mt-4 border-primary">
       <div className="card-header bg-primary text-white">
@@ -55,8 +86,8 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete }) => {
       <div className="card-body">
         {quiz.questions.map((q, idx) => (
           <div key={idx} className="mb-3">
-            <p><strong>{idx+1}. {q.questionText}</strong> ({q.points || 1} pt(s))</p>
-            {q.type === 'multiple_choice' && (
+            <p><strong>{idx+1}. {q.questionText}</strong> {!isExercice && `(${q.points || 1} pt(s))`}</p>
+            {q.type === 'multiple_choice' && !isExercice && (
               <div>
                 {q.options.map((opt, optIdx) => (
                   <div className="form-check" key={optIdx}>
@@ -72,7 +103,7 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete }) => {
                 ))}
               </div>
             )}
-            {q.type === 'open' && (
+            {(q.type === 'open' || isExercice) && (
               <textarea
                 className="form-control"
                 rows="3"
@@ -83,9 +114,9 @@ const QuizPlayer = ({ courseId, sectionId, quiz, token, onComplete }) => {
           </div>
         ))}
         <button className="btn btn-success" onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Envoi...' : 'Soumettre le quiz'}
+          {loading ? 'Envoi...' : isExercice ? 'Soumettre l\'exercice' : 'Soumettre le quiz'}
         </button>
-        {score !== null && (
+        {!isExercice && score !== null && (
           <div className={`alert mt-3 ${score >= (quiz.passingScore || 70) ? 'alert-success' : 'alert-danger'}`}>
             Votre score : {score}%
           </div>

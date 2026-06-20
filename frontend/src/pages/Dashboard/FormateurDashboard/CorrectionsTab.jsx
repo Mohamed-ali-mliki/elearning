@@ -10,6 +10,7 @@ export default function CorrectionsTab() {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [grade, setGrade] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false); // ✅ CORRECTION
 
   useEffect(() => {
     fetchSubmissions();
@@ -38,6 +39,7 @@ export default function CorrectionsTab() {
     }
 
     try {
+      // 1. Attribuer la note via l'API
       const res = await fetch(
         `/api/submissions/formateur/submissions/${submission.enrollmentId}/${submission.quizId}/${submission.questionId}`,
         {
@@ -52,15 +54,45 @@ export default function CorrectionsTab() {
           })
         }
       );
-      if (res.ok) {
-        alert('Note attribuée avec succès !');
-        setSelectedSubmission(null);
-        setGrade('');
-        setFeedback('');
-        fetchSubmissions();
-      } else {
+      if (!res.ok) {
         alert('Erreur lors de l\'attribution de la note.');
+        return;
       }
+
+      // 2. ✅ CORRECTION : Envoyer un message automatique à l'étudiant
+      setSendingMessage(true);
+      try {
+        const messageContent = `Bonjour ${submission.student?.fullName || 'étudiant'},
+
+Votre réponse à la question "${submission.questionText}" (quiz "${submission.quizTitle}") a été corrigée.
+Note obtenue : ${grade} point(s).${feedback ? `\nCommentaire du formateur : ${feedback}` : ''}
+
+Cordialement,
+Votre formateur.`;
+
+        await fetch('/api/messages/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            receiverId: submission.student._id,
+            courseId: submission.courseId,
+            content: messageContent
+          })
+        });
+      } catch (msgErr) {
+        console.error('Erreur envoi message automatique', msgErr);
+      } finally {
+        setSendingMessage(false);
+      }
+
+      alert('Note attribuée et message envoyé à l\'étudiant.');
+      setSelectedSubmission(null);
+      setGrade('');
+      setFeedback('');
+      fetchSubmissions();
     } catch (err) {
       alert('Erreur serveur.');
     }
@@ -162,6 +194,7 @@ export default function CorrectionsTab() {
                         placeholder="Votre retour..."
                       />
                     </div>
+                    {sendingMessage && <p className="text-info">Envoi du message de correction...</p>}
                   </div>
                   <div className="modal-footer">
                     <button
@@ -173,8 +206,9 @@ export default function CorrectionsTab() {
                     <button
                       className="btn btn-primary"
                       onClick={() => handleGrade(selectedSubmission)}
+                      disabled={sendingMessage}
                     >
-                      Attribuer la note
+                      Attribuer la note & envoyer
                     </button>
                   </div>
                 </div>

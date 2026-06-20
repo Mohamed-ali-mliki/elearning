@@ -16,6 +16,30 @@ const WatchCourse = () => {
   const [progression, setProgression] = useState({});
   const [chargement, setChargement] = useState(true);
 
+  // ✅ Nouvel état : exercice soumis ?
+  const [exerciseSubmitted, setExerciseSubmitted] = useState(false);
+
+  const fetchProgression = async () => {
+    try {
+      const res = await fetch(`/api/enrollments/client/enrollments`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const list = await res.json();
+        const found = list.find(c => c._id === courseId);
+        if (found && found.sectionProgress) {
+          const progMap = {};
+          found.sectionProgress.forEach(sp => {
+            progMap[sp.sectionId] = sp.completed;
+          });
+          setProgression(progMap);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     const fetchCourse = async () => {
       try {
@@ -35,62 +59,28 @@ const WatchCourse = () => {
       }
     };
 
-    const fetchEnrollment = async () => {
-      try {
-        const res = await fetch(`/api/enrollments/client/enrollments`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const list = await res.json();
-          const found = list.find(c => c._id === courseId);
-          if (found && found.sectionProgress) {
-            const progMap = {};
-            found.sectionProgress.forEach(sp => {
-              progMap[sp.sectionId] = sp.completed;
-            });
-            setProgression(progMap);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      }
+    const init = async () => {
+      await fetchCourse();
+      await fetchProgression();
       setChargement(false);
     };
 
-    fetchCourse();
-    fetchEnrollment();
+    init();
   }, [courseId, token]);
 
-  const marquerTermine = async (sectionId) => {
-    const section = sections.find(s => s._id === sectionId);
-    if (section?.quizId && section.quizRequired) {
-      alert(t('watch.quizRequiredMsg'));
-      return;
-    }
-    try {
-      const res = await fetch(`/api/enrollments/${courseId}/progress`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ sectionId, completed: true })
-      });
-      if (res.ok) {
-        setProgression(prev => ({ ...prev, [sectionId]: true }));
-        const idx = sections.findIndex(s => s._id === sectionId);
-        if (idx + 1 < sections.length) setSectionActuelle(sections[idx + 1]);
-      } else {
-        const err = await res.json();
-        alert(err.message || t('common.error'));
-      }
-    } catch (err) {
-      alert(t('common.error'));
-    }
+  // Réinitialiser l'état quand la section change
+  useEffect(() => {
+    setExerciseSubmitted(false);
+  }, [sectionActuelle]);
+
+  // ✅ MODIFICATION : suppression du bouton manuel "Marquer comme terminée"
+  // La progression est désormais automatique via la réussite du quiz (back-end).
+  const marquerTermine = async () => {
+    // Ne fait plus rien – conservé pour éviter les erreurs si appelé ailleurs
   };
 
-  const onQuizReussi = (sectionId) => {
-    alert(t('watch.scoreSuccess'));
+  const onQuizReussi = () => {
+    fetchProgression();
   };
 
   if (chargement) return <div className="text-center mt-5">{t('common.loading')}</div>;
@@ -98,15 +88,14 @@ const WatchCourse = () => {
 
   const section = sectionActuelle;
   const estComplete = progression[section?._id];
+  const isExercice = section?.quizId?.type === 'exercice';
 
-  // 🔹 Rendu du contenu de la section (vidéo et/ou PDF)
   const renderContent = () => {
     if (!section) return null;
 
     const hasVideo = section.videoUrl && section.videoUrl.trim() !== '';
     const hasPdf = section.pdfUrl && section.pdfUrl.trim() !== '';
 
-    // Cas où aucun fichier n'est présent (fallback)
     if (!hasVideo && !hasPdf) {
       return <p className="text-muted">{t('watch.noContent')}</p>;
     }
@@ -119,7 +108,6 @@ const WatchCourse = () => {
               src={`http://localhost:5000/${section.videoUrl}`}
               controls
               className="w-100 rounded"
-              onEnded={() => marquerTermine(section._id)}
             />
           </div>
         )}
@@ -144,27 +132,28 @@ const WatchCourse = () => {
           {section ? (
             <>
               <h2>{section.title}</h2>
-
               {renderContent()}
 
+              {/* ✅ Quiz / Exercice */}
               {section.quizId && (
                 <QuizPlayer
                   courseId={courseId}
                   sectionId={section._id}
                   quiz={section.quizId}
                   token={token}
-                  onComplete={() => onQuizReussi(section._id)}
+                  onComplete={onQuizReussi}
+                  onExerciseSubmitted={() => setExerciseSubmitted(true)}
                 />
               )}
 
-              {!estComplete ? (
-                <button
-                  className="btn btn-primary mt-3"
-                  onClick={() => marquerTermine(section._id)}
-                >
-                  {t('watch.markComplete')}
-                </button>
-              ) : (
+              {/* ✅ Aucun bouton manuel – la progression est gérée automatiquement */}
+              {isExercice && !exerciseSubmitted && !estComplete && (
+                <div className="alert alert-info mt-3">
+                  ⏳ Veuillez soumettre l'exercice avant de pouvoir terminer cette section.
+                </div>
+              )}
+
+              {estComplete && (
                 <div className="alert alert-success mt-3">
                   ✓ {t('watch.completed')}
                 </div>
@@ -179,14 +168,13 @@ const WatchCourse = () => {
           <h3>{t('watch.sections')}</h3>
           <ul className="list-group">
             {sections.map(s => {
-              // Déterminer l'icône en fonction des fichiers disponibles
               let icon = null;
               if (s.videoUrl && s.videoUrl.trim() !== '') {
                 icon = <FaPlayCircle className="me-1 text-primary" />;
               } else if (s.pdfUrl && s.pdfUrl.trim() !== '') {
                 icon = <FaFilePdf className="me-1 text-danger" />;
               } else {
-                icon = <span className="me-1">📄</span>; // fallback
+                icon = <span className="me-1">📄</span>;
               }
 
               return (
